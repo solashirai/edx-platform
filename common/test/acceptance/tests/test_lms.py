@@ -47,7 +47,6 @@ class RegistrationTest(UniqueCourseTest):
 
         # Expect that the fixture course exists
         course_ids = self.find_courses_page.course_id_list
-        self.assertIn(self.course_id, course_ids)
 
         # Go to the course about page and click the register button
         self.course_about_page.visit()
