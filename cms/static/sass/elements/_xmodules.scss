@@ -18,7 +18,8 @@
   // display mode
   &.xblock-student_view {
     // full screen
-    .video-controls .add-fullscreen {
+    .video-controls .add-fullscreen,
+    .video .edx-contextmenu #menuitem-fullscreen {
       display: none !important; // nasty, but needed to override the bad specificity of the xmodule css selectors
     }
 

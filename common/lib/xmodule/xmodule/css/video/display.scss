@@ -691,6 +691,7 @@ div.video {
     width: 100%;
     z-index: 999;
     vertical-align: middle;
+    border-radius: 0;
 
     &.closed {
       div.tc-wrapper {
