@@ -12,7 +12,7 @@ from django.conf import settings
 from django.views.decorators.http import require_http_methods
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
-from django.http import HttpResponseBadRequest, HttpResponseNotFound, HttpResponse
+from django.http import HttpResponseBadRequest, HttpResponseNotFound, HttpResponse, Http404
 from util.json_request import JsonResponse, JsonResponseBadRequest
 from util.date_utils import get_default_time_display
 from edxmako.shortcuts import render_to_response
@@ -209,13 +209,21 @@ def course_handler(request, course_key_string=None):
         json: delete this branch from this course (leaving off /branch/draft would imply delete the course)
     """
     response_format = request.REQUEST.get('format', 'html')
-    if response_format == 'json' or 'application/json' in request.META.get('HTTP_ACCEPT', 'application/json'):
+    http_accept = request.META.get('HTTP_ACCEPT', 'application/json')
+
+    if ('application/json' in http_accept and request.method != 'POST') or course_key_string is not None:
+        try:
+            course_key = CourseKey.from_string(course_key_string)
+        except InvalidKeyError:
+            raise Http404
+
+    if response_format == 'json' or 'application/json' in http_accept:
         if request.method == 'GET':
-            course_module = _get_course_module(CourseKey.from_string(course_key_string), request.user, depth=None)
+            course_module = _get_course_module(course_key, request.user, depth=None)
             return JsonResponse(_course_outline_json(request, course_module))
         elif request.method == 'POST':  # not sure if this is only post. If one will have ids, it goes after access
             return _create_or_rerun_course(request)
-        elif not has_course_access(request.user, CourseKey.from_string(course_key_string)):
+        elif not has_course_access(request.user, course_key):
             raise PermissionDenied()
         elif request.method == 'PUT':
             raise NotImplementedError()
@@ -227,7 +235,7 @@ def course_handler(request, course_key_string=None):
         if course_key_string is None:
             return course_listing(request)
         else:
-            return course_index(request, CourseKey.from_string(course_key_string))
+            return course_index(request, course_key)
     else:
         return HttpResponseNotFound()
 
