@@ -236,18 +236,33 @@ $edx-footer-bg-color: rgb(252,252,252);
 
 %edx-footer-link {
   @extend %t-copy-sub1;
+  @include transition(color $tmg-f2 ease-in-out 0);
   display: block;
   margin-bottom: ($baseline/2);
 
   // NOTE: resetting poor link styles
-  color: $edx-footer-link-color;
+  border: none;
   padding: 0;
+  color: $edx-footer-link-color;
+
+  .copy {
+    @include transition(border-color $tmg-f2 ease-in-out 0);
+    display: inline-block;
+    border-bottom: 1px solid transparent;
+    padding: 0 0 ($baseline/20) 0;
+    color: $edx-footer-link-color;
+  }
 
   // STATE: hover + focused
   &:hover, &:focus {
-    border: none;
-    padding: 0;
     color: saturate($edx-footer-link-color, 25%);
+
+    // NOTE: resetting poor link styles
+    border: none;
+
+    .copy {
+      border-bottom-color: saturate($edx-footer-link-color, 25%);
+    }
   }
 
   // CASE: last child
@@ -259,6 +274,8 @@ $edx-footer-bg-color: rgb(252,252,252);
   &.has-emphasis {
     @extend %t-weight4;
   }
+
+
 }
 
 .edx-footer-new {
