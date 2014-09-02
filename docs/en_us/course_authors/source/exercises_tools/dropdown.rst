@@ -9,6 +9,8 @@ Dropdown problems allow the student to choose from a collection of answer option
 .. image:: /Images/DropdownExample.png
  :alt: Image of a dropdown problem
 
+.. note:: Answers in dropdown problems cannot contain greater than signs or less than signs, also known as angle bracket characters (<>). If answer options for your problem must contain angle brackets, use the :ref:`multiple choice<Multiple Choice>` problem type.
+
 ********************************
 Create a Dropdown Problem
 ********************************
@@ -22,6 +24,8 @@ Simple Editor
 ================
 
 To create a dropdown problem, follow these steps.
+
+.. note:: Answers in dropdown problems cannot contain greater than signs or less than signs, also known as angle bracket characters (<>). If answer options for your problem must contain angle brackets, use the :ref:`multiple choice<Multiple Choice>` problem type.
 
 #. Under **Add New Component**, click **Problem**.
 #. In the **Select Problem Component Type** screen, click
