@@ -72,8 +72,651 @@ class ResponseTest(unittest.TestCase):
         rand = random.Random(seed_value)
         return str(rand.randint(0, 1e9))
 
+    def _grade_problem(self, problem_id, choice):
+        """
+        Given a set of student choices for our problem, return the hint message to be shown (if any)
+        :param      choice: a single choice made by the student (e.g. 'Multiple Choice')
+        :return:    the hint message string to be shown
+        """
+        student_answers = {problem_id: choice}
+        resulting_cmap = self.problem.grade_answers(answers=student_answers)    # pylint: disable=no-member
+        return resulting_cmap.cmap[problem_id]['msg']
+
+    def _check_student_selection_result(self, problem_id, choice, expected_string, expect_failure=False):
+        """
+        This helper function simplifies a call to either 'assertNotEqual' or 'assertEqual' to
+        make the tests in this file easier to read.
+        """
+        message_text = self._grade_problem(problem_id, choice)
+        if expect_failure:
+            self.assertNotEqual(message_text,
+                             expected_string,
+                             '\n   The produced HTML hint string:\n                           ' + message_text +
+                             '\n   Should not have matched the expected HTML:\n                           ' + expected_string)
+        else:
+            self.assertEqual(message_text,
+                             expected_string,
+                             '\nThe produced HTML hint string:\n                           ' + message_text +
+                             '\nDoes not match the expected HTML:\n                           ' + expected_string)
+
+
+class TextInputHintsTest(ResponseTest):
+    """
+    This class consists of a suite of test cases to be run on the text input problem represented by the XML below.
+    """
+    xml = """
+        <problem  schema="edXML/1.0">
+            <p>In which country would you find the city of Paris?</p>
+
+            <stringresponse answer="France" type="ci" >
+                <textline label="In which country would you find the city of Paris?" size="20"/>
+                <correcthint>
+                    Viva la France!
+                </correcthint>
+
+                <additional_answer answer="USA" type="ci" >
+                     Less well known, but yes, there is a Paris, Texas.
+                </additional_answer>
+
+                <stringequalhint answer="Germany">                       
+                    I do not think so.
+                </stringequalhint>
+
+                <regexphint answer=".*land">
+                     The country name does not end in LAND
+                </regexphint>
+            </stringresponse>
+
+            <p>What color is the sky?</p>
+            <stringresponse answer="Blue">
+                <correcthint >The red light is scattered by water molecules leaving only blue light.
+                </correcthint>
+                <textline label="What color is the sky?" size="20"/>
+            </stringresponse>
+
+            <p>(This question will cause an illegal regular expression exception)</p>
+            <stringresponse answer="Bonk">
+                <correcthint >This hint should never appear.
+                </correcthint>
+                <textline label="Why not?" size="20"/>
+                <regexphint answer="[">
+                     This hint should never appear either because the regex is illegal.
+                </regexphint>
+            </stringresponse>
+
+        </problem>
+        """
+    problem = new_loncapa_problem(xml)          # this problem is properly constructed
+
+    def test_text_input_hints_stringint(self):
+        """
+        Test that a stringhint is properly delivered.
+        """
+        # a correctly constructed regex hint
+        self._check_student_selection_result(
+            u'1_2_1', 'Germany',
+            u'<div class="feedback_hint_incorrect>INCORRECT: I do not think so.</div>'
+        )
+
+    def test_text_input_hints_regex(self):
+        """
+        Test that regular expression hints are properly triggered.
+        """
+        # a correctly constructed regex hint
+        self._check_student_selection_result(
+            u'1_2_1', 'Disneyland',
+            u'<div class="feedback_hint_incorrect>INCORRECT: The country name does not end in LAND</div>'
+        )
+
+        # an illegally constructed regular expression hint throws an exception
+        with self.assertRaises(ResponseError):
+            self._check_student_selection_result(
+                u'1_4_1', 'SOME ANSWER',
+                u''
+        )
+
+    def test_text_input_hints_france(self):
+        """
+        Test that variants of 'france' produces the proper hint response.
+        """
+        self._check_student_selection_result(
+            u'1_2_1', 'france',
+            u'<div class="feedback_hint_correct">CORRECT: Viva la France!</div>'
+        )
+
+        self._check_student_selection_result(
+            u'1_2_1', 'France',
+            u'<div class="feedback_hint_correct">CORRECT: Viva la France!</div>'
+        )
+
+    def test_text_input_hints_mexico(self):
+        """
+        Test that 'Mexico' (a wrong answer) produces no hint response.
+        """
+        self._check_student_selection_result(
+            u'1_2_1', 'Mexico',
+            ''
+        )
+
+    def test_text_input_hints_usa(self):
+        """
+        Test that variants of 'USA' (an alternate answer) produces correct hint responses.
+        """
+        self._check_student_selection_result(
+            u'1_2_1', 'USA',
+            u'<div class="feedback_hint_correct">CORRECT: Less well known, but yes, there is a Paris, Texas.</div>'
+        )
+
+        self._check_student_selection_result(
+            u'1_2_1', 'usa',
+            u'<div class="feedback_hint_correct">CORRECT: Less well known, but yes, there is a Paris, Texas.</div>'
+        )
+
+        self._check_student_selection_result(
+            u'1_2_1', 'uSAx',
+            u'<div class="feedback_hint_correct">CORRECT: Less well known, but yes, there is a Paris, Texas.</div>',
+            expect_failure = True
+        )
+
+    def test_text_input_hints_blue(self):
+        """
+        Test that 'blue' produces correct hint responses.
+        """
+        self._check_student_selection_result(
+            u'1_3_1', 'Blue',
+            u'<div class="feedback_hint_correct">CORRECT: The red light is scattered by water molecules leaving only blue light.</div>'
+        )
+
+        # negative case: misspelled answer
+        self._check_student_selection_result(
+            u'1_3_1', 'bluex',
+            u'<div class="feedback_hint_correct">CORRECT: The red light is scattered by water molecules leaving only blue light.</div>',
+            expect_failure=True
+        )
+
+        # negative case: lowercase answer isn't allowed without the 'ci' attribute
+        self._check_student_selection_result(
+            u'1_3_1', 'blue',
+            u'<div class="feedback_hint_correct">CORRECT: The red light is scattered by water molecules leaving only blue light.</div>',
+            expect_failure=True
+        )
+
+
+
+
+
+
+class NumericInputHintsTest(ResponseTest):
+    """
+    This class consists of a suite of test cases to be run on the numeric input problem represented by the XML below.
+    """
+    xml = """
+            <problem schema="edXML/1.0">
+                <numericalresponse answer="1.141">
+                    <responseparam default=".01" type="tolerance"/>
+                    <formulaequationinput label="What value when squared is approximately equal to 2 (give your answer to 2 decimal places)?"/>
+
+                    <correcthint label="Nice">
+                        The square root of two turns up in the strangest places.
+                    </correcthint>
+
+                    <numerichint answer="-1.141" tolerance="0.01">
+                        Yes, squaring a negative number yields a positive
+                    </numerichint>
+
+                    <numerichint answer="7">
+                        7 x 7 = 49 which is much too high.
+                    </numerichint>
+
+                    <lehint answer="1">
+                        Much too low. You may be rounding down.
+                    </lehint>
+                </numericalresponse>
+
+                <numericalresponse answer="4">
+                    <responseparam default=".01" type="tolerance"/>
+                    <formulaequationinput label="What is 2 + 2?"/>
+                    <correcthint >
+                        Pretty easy, uh?.
+                    </correcthint>
+                </numericalresponse>
+            </problem>
+    """
+    problem = new_loncapa_problem(xml)          # this problem is properly constructed
+
+    def test_numeric_input_hints_correct_answer(self):
+        """
+        Test the simple cases of a correct answer.
+        """
+        # check when the correct answer has a custom label
+        self._check_student_selection_result(
+            u'1_2_1', '1.141',
+            u'<div class="feedback_hint_correct">Nice: The square root of two turns up in the strangest places.</div>'
+        )
+
+        # check when the correct answer has no custom label
+        self._check_student_selection_result(
+            u'1_3_1', '4',
+            u'<div class="feedback_hint_correct">CORRECT: Pretty easy, uh?.</div>'
+        )
+
+
+
+
+
+
+
+
+
+
+
+class CheckboxHintsTest(ResponseTest):
+    """
+    This class consists of a suite of test cases to be run on the checkbox problem represented by the XML below.
+    """
+    xml = """
+        <problem schema="edXML/1.0">
+            <p>Select all the fruits from the list</p>
+            <choiceresponse>
+              <checkboxgroup label="Select all the fruits from the list" direction="vertical">
+                <choice correct="true">Apple
+                           <choicehint selected="true">You are right that apple is a fruit.
+                           </choicehint>
+                           <choicehint selected="false">Remember that apple is also a fruit.
+                           </choicehint>
+                </choice>
+                <choice correct="false">Mushroom
+                           <choicehint selected="true">Mushroom is a fungus, not a fruit.
+                           </choicehint>
+                           <choicehint selected="false">You are right that mushrooms are not fruit
+                           </choicehint>
+                </choice>
+                <choice correct="true">Grape
+                           <choicehint selected="true">You are right that grape is a fruit
+                           </choicehint>
+                           <choicehint selected="false">Remember that grape is also a fruit.
+                           </choicehint>
+                </choice>
+                <choice correct="false">Mustang</choice>
+                <choice correct="false">Camero
+                           <choicehint selected="true">I do not know what a Camero is but it is not a fruit.
+                           </choicehint>
+                           <choicehint selected="false">What is a camero anyway?
+                           </choicehint>
+                </choice>
+                <booleanhint value="A*B" label="Almost right"> You are right that apple is a fruit, but there is one you are missing. Also, mushroom is not a fruit.
+                </booleanhint>
+                <booleanhint value="B*C"> You are right that grape is a fruit, but there is one you are missing. Also, mushroom is not a fruit.
+                </booleanhint>
+              </checkboxgroup>
+            </choiceresponse>
+            <p>Select all the vegetables from the list</p>
+            <choiceresponse>
+              <checkboxgroup label="Select all the vegetables from the list" direction="vertical">
+                <choice correct="false">Banana
+                           <choicehint selected="true">No, sorry, a banana is a fruit.
+                           </choicehint>
+                           <choicehint selected="false">poor banana.
+                           </choicehint>
+                </choice>
+                <choice correct="false">Ice Cream</choice>
+                <choice correct="false">Mushroom
+                           <choicehint selected="true" label="SORRY:">Mushroom is a fungus, not a vegetable.
+                           </choicehint>
+                           <choicehint selected="false">You are right that mushrooms are not vegatbles
+                           </choicehint>
+                </choice>
+                <choice correct="true">Brussel Sprout
+                           <choicehint selected="true">Brussel sprouts are vegetables.
+                           </choicehint>
+                           <choicehint selected="false">Brussel sprout is the only vegetable in this list.
+                           </choicehint>
+                </choice>
+                <booleanhint value="A*B" label="Very funny"> Making a banana split?
+                </booleanhint>
+                <booleanhint value="B*D"> That will make a horrible dessert: a brussel sprout split?
+                </booleanhint>
+              </checkboxgroup>
+            </choiceresponse>
+        </problem>
+    """
+    problem = new_loncapa_problem(xml)          # this problem is properly constructed
+
+    def test_checkbox_simple_choice_hints_choice_apple(self):
+        """
+        The student selects only the Apple choice.
+        """
+        self._check_student_selection_result(
+            u'1_2_1', [u'choice_0'],
+            u'<div class="feedback_hint_incorrect">INCORRECT<div class="feedback_hint_text">You are right that apple is a fruit.\n                           </div><div class="feedback_hint_text">You are right that mushrooms are not fruit\n                           </div><div class="feedback_hint_text">Remember that grape is also a fruit.\n                           </div><div class="feedback_hint_text">What is a camero anyway?\n                           </div></div>'
+        )
+
+    def test_checkbox_simple_choice_hints_choice_mushroom_1_2_1(self):
+        """
+        The student selects only the Mushroom choice.
+        """
+        self._check_student_selection_result(
+            u'1_2_1', [u'choice_1'],
+            u'<div class="feedback_hint_incorrect">INCORRECT<div class="feedback_hint_text">Remember that apple is also a fruit.\n                           </div><div class="feedback_hint_text">Mushroom is a fungus, not a fruit.\n                           </div><div class="feedback_hint_text">Remember that grape is also a fruit.\n                           </div><div class="feedback_hint_text">What is a camero anyway?\n                           </div></div>'
+        )
+
+    def test_checkbox_simple_choice_hints_choice_grape(self):
+        """
+        The student selects only the Grape choice.
+        """
+        self._check_student_selection_result(
+            u'1_2_1', [u'choice_2'],
+            u'<div class="feedback_hint_incorrect">INCORRECT<div class="feedback_hint_text">Remember that apple is also a fruit.\n                           </div><div class="feedback_hint_text">You are right that mushrooms are not fruit\n                           </div><div class="feedback_hint_text">You are right that grape is a fruit\n                           </div><div class="feedback_hint_text">What is a camero anyway?\n                           </div></div>'
+        )
+
+    def test_checkbox_simple_choice_hints_choice_mustang(self):
+        """
+        The student selects only the Mustang choice.
+        """
+        self._check_student_selection_result(
+            u'1_2_1', [u'choice_3'],
+            u'<div class="feedback_hint_incorrect">INCORRECT<div class="feedback_hint_text">Remember that apple is also a fruit.\n                           </div><div class="feedback_hint_text">You are right that mushrooms are not fruit\n                           </div><div class="feedback_hint_text">Remember that grape is also a fruit.\n                           </div><div class="feedback_hint_text">What is a camero anyway?\n                           </div></div>'
+        )
+
+    def test_checkbox_simple_choice_hints_choice_camero(self):
+        """
+        The student selects only the Camero choice.
+        """
+        self._check_student_selection_result(
+            u'1_2_1', [u'choice_4'],
+            u'<div class="feedback_hint_incorrect">INCORRECT<div class="feedback_hint_text">Remember that apple is also a fruit.\n                           </div><div class="feedback_hint_text">You are right that mushrooms are not fruit\n                           </div><div class="feedback_hint_text">Remember that grape is also a fruit.\n                           </div><div class="feedback_hint_text">I do not know what a Camero is but it is not a fruit.\n                           </div></div>'
+        )
+
+    def test_checkbox_simple_choice_hints_choice_apple_mushroom(self):
+        """
+        The student selects the Apple and Mushroom choices.
+        """
+        self._check_student_selection_result(
+            u'1_2_1', [u'choice_0', u'choice_1'],
+            u'<div class="feedback_hint_incorrect">INCORRECT<div class="feedback_hint_text">Almost right: You are right that apple is a fruit, but there is one you are missing. Also, mushroom is not a fruit.</div></div>'
+        )
+
+    def test_checkbox_simple_choice_hints_choice_mushroom_grape(self):
+        """
+        The student selects the Mushroom and Grape choices.
+        """
+        self._check_student_selection_result(
+            u'1_2_1', [u'choice_1', u'choice_2'],
+            u'<div class="feedback_hint_incorrect">INCORRECT<div class="feedback_hint_text">You are right that grape is a fruit, but there is one you are missing. Also, mushroom is not a fruit.</div></div>'
+        )
+
+    def test_checkbox_simple_choice_hints_choice_apple_grape(self):
+        """
+        The student selects the Apple and Grape choices.
+        """
+        self._check_student_selection_result(
+            u'1_2_1', [u'choice_0', u'choice_2'],
+            u'<div class="feedback_hint_correct">CORRECT<div class="feedback_hint_text">You are right that apple is a fruit.\n                           </div><div class="feedback_hint_text">You are right that mushrooms are not fruit\n                           </div><div class="feedback_hint_text">You are right that grape is a fruit\n                           </div><div class="feedback_hint_text">What is a camero anyway?\n                           </div></div>'
+        )
+
+    def test_checkbox_simple_choice_hints_choice_banana(self):
+        """
+        The student selects only the Banana choice.
+        """
+        self._check_student_selection_result(
+            u'1_3_1', [u'choice_0'],
+            u'<div class="feedback_hint_incorrect">INCORRECT<div class="feedback_hint_text">No, sorry, a banana is a fruit.\n                           </div><div class="feedback_hint_text">You are right that mushrooms are not vegatbles\n                           </div><div class="feedback_hint_text">Brussel sprout is the only vegetable in this list.\n                           </div></div>'
+        )
+
+    def test_checkbox_simple_choice_hints_choice_icecream(self):
+        """
+        The student selects only the Ice Cream choice.
+        """
+        self._check_student_selection_result(
+            u'1_3_1', [u'choice_1'],
+            u'<div class="feedback_hint_incorrect">INCORRECT<div class="feedback_hint_text">poor banana.\n                           </div><div class="feedback_hint_text">You are right that mushrooms are not vegatbles\n                           </div><div class="feedback_hint_text">Brussel sprout is the only vegetable in this list.\n                           </div></div>'
+        )
+
+    def test_checkbox_simple_choice_hints_choice_mushroom_1_3_1(self):
+        """
+        The student selects only the Mushroom choice.
+        """
+        self._check_student_selection_result(
+            u'1_3_1', [u'choice_2'],
+            u'<div class="feedback_hint_incorrect">INCORRECT<div class="feedback_hint_text">poor banana.\n                           </div><div class="feedback_hint_text">Mushroom is a fungus, not a vegetable.\n                           </div><div class="feedback_hint_text">Brussel sprout is the only vegetable in this list.\n                           </div></div>'
+        )
+
+    def test_checkbox_simple_choice_hints_choice_brusselsprout(self):
+        """
+        The student selects only the Brussel Sprout choice.
+        """
+        self._check_student_selection_result(
+            u'1_3_1', [u'choice_3'],
+            u'<div class="feedback_hint_correct">CORRECT<div class="feedback_hint_text">poor banana.\n                           </div><div class="feedback_hint_text">You are right that mushrooms are not vegatbles\n                           </div><div class="feedback_hint_text">Brussel sprouts are vegetables.\n                           </div></div>'
+        )
+
+    def test_checkbox_simple_choice_hints_choice_banana_icecream(self):
+        """
+        The student selects the Banana and Ice Cream choices.
+        """
+        self._check_student_selection_result(
+            u'1_3_1', [u'choice_0', u'choice_1'],
+            u'<div class="feedback_hint_incorrect">INCORRECT<div class="feedback_hint_text">Very funny: Making a banana split?</div></div>'
+        )
+
+    def test_checkbox_simple_choice_hints_choice_icecream_mushroom(self):
+        """
+        The student selects the Ice Cream and Mushroom choices.
+        """
+        self._check_student_selection_result(
+            u'1_3_1', [u'choice_1', u'choice_2'],
+            u'<div class="feedback_hint_incorrect">INCORRECT<div class="feedback_hint_text">poor banana.\n                           </div><div class="feedback_hint_text">Mushroom is a fungus, not a vegetable.\n                           </div><div class="feedback_hint_text">Brussel sprout is the only vegetable in this list.\n                           </div></div>'
+        )
+
+    def test_checkbox_simple_choice_hints_choice_banana_mushroom(self):
+        """
+        The student selects the Banana and Mushroom choices.
+        """
+        self._check_student_selection_result(
+            u'1_3_1', [u'choice_0', u'choice_2'],
+            u'<div class="feedback_hint_incorrect">INCORRECT<div class="feedback_hint_text">No, sorry, a banana is a fruit.\n                           </div><div class="feedback_hint_text">Mushroom is a fungus, not a vegetable.\n                           </div><div class="feedback_hint_text">Brussel sprout is the only vegetable in this list.\n                           </div></div>'
+        )
+
+
+class MultpleChoiceHintsTest(ResponseTest):
+    """
+    This class consists of a suite of test cases to be run on the multiple choice problem represented by the XML below.
+    """
+    xml = """
+              <problem schema="edXML/1.0">
+                <p>(note the blank line before mushroom -- be sure to include this test case)</p>
+                <p>Select the fruit from the list</p>
+                <multiplechoiceresponse>
+                  <choicegroup label="Select the fruit from the list" type="MultipleChoice">
+                    <choice correct="false">Mushroom
+                        <choicehint>Mushroom is a fungus, not a fruit.
+                        </choicehint>
+                    </choice>
+                    <choice correct="false">Potato</choice>
+                    <choice correct="true">Apple
+                        <choicehint label="OUTSTANDING">Apple is indeed a fruit.
+                        </choicehint>
+                    </choice>
+                  </choicegroup>
+                </multiplechoiceresponse>
+                <p>Select the vegetables from the list</p>
+                <multiplechoiceresponse>
+                  <choicegroup label="Select the vegetables from the list" type="MultipleChoice">
+                    <choice correct="false">Mushroom
+                        <choicehint>Mushroom is a fungus, not a vegetable.
+                        </choicehint>
+                    </choice>
+                    <choice correct="true">Potato
+                        <choicehint>Potato is a root vegetable.
+                        </choicehint>
+                    </choice>
+                    <choice correct="false">Apple
+                        <choicehint label="OOPS">Apple is a fruit.
+                        </choicehint>
+                    </choice>
+                  </choicegroup>
+                </multiplechoiceresponse>
+              </problem>
+    """
+    problem = new_loncapa_problem(xml)
+
+    def test_multiple_choice_simple_choice_hints_choice_mushroom(self):
+        """
+        The student selects only the Mushroom choice.
+        """
+        self._check_student_selection_result(
+            u'1_2_1', u'choice_0',
+            '<div class="feedback_hint_incorrect">INCORRECT: Mushroom is a fungus, not a fruit.</div>'
+        )
+
+    def test_multiple_choice_simple_choice_hints_choice_potato_1_2_1(self):
+        """
+        The student selects only the Potato choice.
+        """
+        self._check_student_selection_result(
+            u'1_2_1', u'choice_1',
+            ''
+        )
+
+    def test_multiple_choice_simple_choice_hints_choice_potato_1_3_1(self):
+        """
+        The student selects only the Potato choice.
+        """
+        self._check_student_selection_result(
+            u'1_3_1', u'choice_1',
+            '<div class="feedback_hint_correct">CORRECT: Potato is a root vegetable.</div>'
+        )
+
+    def test_multiple_choice_simple_choice_hints_choice_apple_1_2_1(self):
+        """
+        The student selects only the Apple choice.
+        """
+        self._check_student_selection_result(
+            u'1_2_1', u'choice_2',
+            '<div class="feedback_hint_correct">OUTSTANDING: Apple is indeed a fruit.</div>'
+        )
+
+    def test_multiple_choice_simple_choice_hints_choice_apple_1_3_1(self):
+        """
+        The student selects only the Apple choice for the second component.
+        """
+        self._check_student_selection_result(
+            u'1_3_1', u'choice_2',
+            '<div class="feedback_hint_incorrect">OOPS: Apple is a fruit.</div>'
+        )
+
+
+class DropdownHintsTest(ResponseTest):
+    """
+    This class consists of a suite of test cases to be run on the drop down problem represented by the XML below.
+    """
+    xml = """
+            <problem schema="edXML/1.0">
+                <p>Translation between Dropdown and ________ is straightforward.</p>
+                <optionresponse>
+                    <optioninput correct="Multiple Choice" options="(Multiple Choice),Text Input,Numerical Input">
+                        <option correct="True">Multiple Choice
+                           <optionhint label="Good Job">Yes, multiple choice is the right answer.
+                           </optionhint> </option>
+                        <option correct="False">Text Input
+                           <optionhint>No, text input problems do not present options.
+                           </optionhint> </option>
+                        <option correct="False">Numerical Input
+                           <optionhint>No, numerical input problems do not present options.
+                           </optionhint> </option>
+                    </optioninput>
+                </optionresponse>
+                <p>Clowns have funny _________ to make people laugh.</p>
+                <optionresponse>
+                    <optioninput correct="FACES" options="dogs,(FACES),money,donkeys,-no hint-">
+                        <option correct="False">dogs
+                           <optionhint label="NOPE">Not dogs, not cats, not toads
+                           </optionhint> </option>
+                        <option correct="True">FACES
+                           <optionhint>With lots of makeup, doncha know?
+                           </optionhint> </option>
+                        <option correct="False">money
+                           <optionhint>Clowns do not have any money, of course
+                           </optionhint> </option>
+                    </optioninput>
+                </optionresponse>
+            </problem>
+    """
+    problem = new_loncapa_problem(xml)
+
+    def test_dropdown_simple_choice_hints_choice_multiple_choice(self):
+        """
+        The student selects only the 'Multiple Choice' choice.
+        """
+        self._check_student_selection_result(
+            u'1_2_1', 'Multiple Choice',
+            '<div class="feedback_hint_correct">Good Job: Yes, multiple choice is the right answer.</div>'
+        )
+
+    def test_dropdown_simple_choice_hints_choice_text_input(self):
+        """
+        The student selects only the 'Text Input' choice.
+        """
+        self._check_student_selection_result(
+            u'1_2_1', 'Text Input',
+            '<div class="feedback_hint_incorrect">INCORRECT: No, text input problems do not present options.</div>'
+        )
+
+    def test_dropdown_simple_choice_hints_choice_numerical_input(self):
+        """
+        The student selects only the 'Numerical Input' choice.
+        """
+        self._check_student_selection_result(
+            u'1_2_1', 'Numerical Input',
+            '<div class="feedback_hint_incorrect">INCORRECT: No, numerical input problems do not present options.</div>'
+        )
+
+    def test_dropdown_simple_choice_hints_choice_faces(self):
+        """
+        The student selects only the 'FACES' choice.
+        """
+        self._check_student_selection_result(
+            u'1_3_1', 'FACES',
+            '<div class="feedback_hint_correct">CORRECT: With lots of makeup, doncha know?</div>'
+        )
+
+    def test_dropdown_simple_choice_hints_choice_dogs(self):
+        """
+        The student selects only the 'dogs' choice.
+        """
+        self._check_student_selection_result(
+            u'1_3_1', 'dogs',
+            '<div class="feedback_hint_incorrect">NOPE: Not dogs, not cats, not toads</div>'
+        )
+
+class ErrorConditionsTest(ResponseTest):
+    """
+    Intentional errors are exercised.
+    """
+
+    def test_error_conditions_illegal_element(self):
+        xml_with_errors = """
+            <problem schema="edXML/1.0">
+                <choiceresponse>
+                  <checkboxgroup label="Select all the vegetables from the list" direction="vertical">
+                    <choice correct="false">Banana
+                               <choicehint selected="true">No, sorry, a banana is a fruit.
+                               </choicehint>
+                               <choicehint selected="false">poor banana.
+                               </choicehint>
+                    </choice>
+                    <badElement>  this element is not a legal sibling of 'choice' and 'booleanhint' </badElement>
+                  </checkboxgroup>
+                </choiceresponse>
+            </problem>
+        """
+        with self.assertRaises(Exception):
+            new_loncapa_problem(xml_with_errors)    # this problem is improperly constructed
 
 class MultiChoiceResponseTest(ResponseTest):
+    """
+    This class consists of a suite of test cases for a multiple choice problem.
+    """
     from capa.tests.response_xml_factory import MultipleChoiceResponseXMLFactory
     xml_factory_class = MultipleChoiceResponseXMLFactory
 
@@ -224,7 +867,6 @@ class SymbolicResponseTest(ResponseTest):
         ]
 
         for (input_str, input_mathml, server_fixture) in correct_inputs:
-            print "Testing input: {0}".format(input_str)
             server_resp = load_fixture(server_fixture)
             self._assert_symbolic_grade(
                 problem, input_str, input_mathml,
