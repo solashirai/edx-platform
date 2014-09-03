@@ -360,16 +360,15 @@ function (HTML5Video, Resizer) {
             this.isHtml5Mode() &&
             !(
                 this.browserIsFirefox &&
-                newSpeed === '1.0' &&
                 this.isYoutubeType()
             )
         ) {
             this.videoPlayer.player.setPlaybackRate(newSpeed);
         } else {
             // We request the reloading of the video in the case when YouTube
-            // is in Flash player mode, or when we are in Firefox, and the new
-            // speed is 1.0. The second case is necessary to avoid the bug
-            // where in Firefox speed switching to 1.0 in HTML5 player mode is
+            // is in Flash player mode, or when we are in Firefox
+            // The second case is necessary to avoid the bug
+            // where in Firefox speed switching in HTML5 player mode is
             // handled incorrectly by YouTube API.
             methodName = 'cueVideoById';
             youtubeId = this.youtubeId(newSpeed);
