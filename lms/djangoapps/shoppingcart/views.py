@@ -6,12 +6,15 @@ from django.contrib.auth.models import Group
 from django.http import (HttpResponse, HttpResponseRedirect, HttpResponseNotFound,
     HttpResponseBadRequest, HttpResponseForbidden, Http404)
 from django.utils.translation import ugettext as _
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_http_methods
 from django.core.urlresolvers import reverse
 from django.views.decorators.csrf import csrf_exempt
+from microsite_configuration import microsite
+from util.bad_request_rate_limiter import BadRequestRateLimiter
 from django.contrib.auth.decorators import login_required
 from edxmako.shortcuts import render_to_response
 from opaque_keys.edx.locations import SlashSeparatedCourseKey
+from courseware.courses import get_course_by_id
 from shoppingcart.reports import RefundReport, ItemizedPurchaseReport, UniversityRevenueShareReport, CertificateStatusReport
 from student.models import CourseEnrollment
 from .exceptions import ItemAlreadyInCartException, AlreadyEnrolledInCourseException, CourseDoesNotExistException, ReportTypeDoesNotExistException, \
@@ -21,6 +24,7 @@ from .processors import process_postpay_callback, render_purchase_form_html
 import json
 
 log = logging.getLogger("shoppingcart")
+AUDIT_LOG = logging.getLogger("audit")
 
 EVENT_NAME_USER_UPGRADED = 'edx.course.enrollment.upgrade.succeeded'
 
@@ -166,6 +170,89 @@ def use_code(request):
         return use_registration_code(course_reg, request.user)
 
     return use_coupon_code(coupon, request.user)
+
+
+def get_reg_code_validity(registration_code, request, limiter):
+    """
+    This function checks if the registration code is valid, and then checks if it was already redeemed.
+    """
+    reg_code_was_redeemed = False
+    course_registration = None
+    try:
+        course_registration = CourseRegistrationCode.objects.get(code=registration_code)
+    except CourseRegistrationCode.DoesNotExist:
+        reg_code_is_valid = False
+    else:
+        reg_code_is_valid = True
+        try:
+            RegistrationCodeRedemption.objects.get(registration_code__code=registration_code)
+        except RegistrationCodeRedemption.DoesNotExist:
+            reg_code_was_redeemed = False
+        else:
+            reg_code_was_redeemed = True
+
+    if not reg_code_is_valid:
+        #tick the rate limiter counter
+        AUDIT_LOG.info("Redemption of a non existing RegistrationCode {code}".format(code=registration_code))
+        limiter.tick_bad_request_counter(request)
+        raise Http404()
+
+    return reg_code_is_valid, reg_code_was_redeemed, course_registration
+
+
+@require_http_methods(["GET", "POST"])
+@login_required
+def register_code_redemption(request, registration_code):
+    """
+    This view allows the student to redeem the registration code
+    and enroll in the course.
+    """
+
+    # Add some rate limiting here by re-using the RateLimitMixin as a helper class
+    site_name = microsite.get_value('SITE_NAME', 'localhost')
+    limiter = BadRequestRateLimiter()
+    if limiter.is_rate_limit_exceeded(request):
+        AUDIT_LOG.warning("Rate limit exceeded in registration code redemption.")
+        return HttpResponseForbidden()
+
+    template_to_render = 'shoppingcart/registration_code_receipt.html'
+    if request.method == "GET":
+        reg_code_is_valid, reg_code_was_redeemed, course_registration = get_reg_code_validity(registration_code,
+                                                                                              request, limiter)
+        course = get_course_by_id(getattr(course_registration, 'course_id'), depth=None)
+        context = {
+            'reg_code_was_redeemed': reg_code_was_redeemed,
+            'reg_code_is_valid': reg_code_is_valid,
+            'reg_code': registration_code,
+            'site_name': site_name,
+            'course': course,
+        }
+        return render_to_response(template_to_render, context)
+    elif request.method == "POST":
+        reg_code_is_valid, reg_code_was_redeemed, course_registration = get_reg_code_validity(registration_code,
+                                                                                              request, limiter)
+
+        course = get_course_by_id(getattr(course_registration, 'course_id'), depth=None)
+        if reg_code_is_valid and not reg_code_was_redeemed:
+            #now redeem the reg code.
+            RegistrationCodeRedemption.create_invoice_generated_registration_redemption(course_registration, request.user)
+            CourseEnrollment.enroll(request.user, course.id)
+            context = {
+                'redemption_success': True,
+                'reg_code': registration_code,
+                'site_name': site_name,
+                'course': course,
+            }
+        else:
+            context = {
+                'reg_code_is_valid': reg_code_is_valid,
+                'reg_code_was_redeemed': reg_code_was_redeemed,
+                'redemption_success': False,
+                'reg_code': registration_code,
+                'site_name': site_name,
+                'course': course,
+            }
+        return render_to_response(template_to_render, context)
 
 
 def use_registration_code(course_reg, user):
