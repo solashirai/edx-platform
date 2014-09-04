@@ -74,10 +74,14 @@ class CohortedContentTestCase(ModuleStoreTestCase):
         )
         self.assertEqual(response.status_code, expected_status_code)
 
-    def _assert_mock_request_called_with_group_id(self, mock_request, group_id):
+    def _assert_comments_service_called_with_group_id(self, mock_request, group_id):
         self.assertTrue(mock_request.called)
-        self.assertEqual(mock_request.call_args[1]["data"]["group_id"], group_id)
+        if mock_request.call_args[0][0] == "get":
+            self.assertEqual(mock_request.call_args[1]["params"]["group_id"], group_id)
+        elif mock_request.call_args[0][0] == "post":
+            self.assertEqual(mock_request.call_args[1]["data"]["group_id"], group_id)
 
-    def _assert_mock_request_called_without_group_id(self, mock_request):
+
+    def _assert_comments_service_called_without_group_id(self, mock_request):
         self.assertTrue(mock_request.called)
         self.assertNotIn("group_id", mock_request.call_args[1]["data"])
