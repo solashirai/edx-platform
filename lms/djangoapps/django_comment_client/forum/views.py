@@ -5,8 +5,7 @@ import xml.sax.saxutils as saxutils
 from django.contrib.auth.decorators import login_required
 from django.core.context_processors import csrf
 from django.contrib.auth.models import User
-from django.http import Http404
-from django.utils.translation import ugettext as _
+from django.http import Http404, HttpResponseBadRequest
 from django.views.decorators.http import require_GET
 import newrelic.agent
 
@@ -17,7 +16,14 @@ from course_groups.cohorts import (is_course_cohorted, get_cohort_id, is_comment
 from courseware.access import has_access
 
 from django_comment_client.permissions import cached_has_permission
-from django_comment_client.utils import (merge_dict, extract, strip_none, add_courseware_context, add_thread_group_name)
+from django_comment_client.utils import (
+    merge_dict,
+    extract,
+    strip_none,
+    add_courseware_context,
+    add_thread_group_name,
+    get_group_id_for_comments_service
+)
 import django_comment_client.utils as utils
 import lms.lib.comment_client as cc
 
@@ -245,12 +251,26 @@ def single_thread(request, course_id, discussion_id, thread_id):
     # page; it would be a nice optimization to avoid that extra round trip to
     # the comments service.
     try:
-        thread = cc.Thread.find(thread_id).retrieve(
-            recursive=request.is_ajax(),
-            user_id=request.user.id,
-            response_skip=request.GET.get("resp_skip"),
-            response_limit=request.GET.get("resp_limit")
-        )
+        group_id = get_group_id_for_comments_service(request, course_key, discussion_id)
+    except ValueError:
+        return HttpResponseBadRequest("Invalid cohort id")
+
+    try:
+        if group_id is not None:
+            thread = cc.Thread.find(thread_id).retrieve(
+                recursive=request.is_ajax(),
+                user_id=request.user.id,
+                response_skip=request.GET.get("resp_skip"),
+                response_limit=request.GET.get("resp_limit"),
+                group_id=group_id
+            )
+        else:
+            thread = cc.Thread.find(thread_id).retrieve(
+                recursive=request.is_ajax(),
+                user_id=request.user.id,
+                response_skip=request.GET.get("resp_skip"),
+                response_limit=request.GET.get("resp_limit")
+            )
     except cc.utils.CommentClientRequestError as e:
         if e.status_code == 404:
             raise Http404

@@ -1,9 +1,7 @@
-from django.test.client import RequestFactory
 from django.test.utils import override_settings
 
 from course_groups.models import CourseUserGroup
 from courseware.tests.modulestore_config import TEST_DATA_MIXED_MODULESTORE
-from django_comment_client import base
 from django_comment_common.models import Role
 from django_comment_common.utils import seed_permissions_roles
 from mock import patch
@@ -50,38 +48,16 @@ class CohortedContentTestCase(ModuleStoreTestCase):
         self.student_cohort.users.add(self.student)
         self.moderator_cohort.users.add(self.moderator)
 
-    def _create_thread(
-            self,
-            user,
-            commentable_id,
-            mock_request,
-            group_id,
-            pass_group_id=True,
-            expected_status_code=200
-    ):
-        mock_request.return_value.status_code = 200
-        request_data = {"body": "body", "title": "title", "thread_type": "discussion"}
-        if pass_group_id:
-            request_data["group_id"] = group_id
-        request = RequestFactory().post("dummy_url", request_data)
-        request.user = user
-        request.view_name = "create_thread"
-
-        response = base.views.create_thread(
-            request,
-            course_id=self.course.id.to_deprecated_string(),
-            commentable_id=commentable_id
-        )
-        self.assertEqual(response.status_code, expected_status_code)
+    def _data_or_params_cs_request(self, mock_request):
+        if mock_request.call_args[0][0] == "get":
+            return mock_request.call_args[1]["params"]
+        elif mock_request.call_args[0][0] == "post":
+            return mock_request.call_args[1]["data"]
 
     def _assert_comments_service_called_with_group_id(self, mock_request, group_id):
         self.assertTrue(mock_request.called)
-        if mock_request.call_args[0][0] == "get":
-            self.assertEqual(mock_request.call_args[1]["params"]["group_id"], group_id)
-        elif mock_request.call_args[0][0] == "post":
-            self.assertEqual(mock_request.call_args[1]["data"]["group_id"], group_id)
-
+        self.assertEqual(self._data_or_params_cs_request(mock_request)["group_id"], group_id)
 
     def _assert_comments_service_called_without_group_id(self, mock_request):
         self.assertTrue(mock_request.called)
-        self.assertNotIn("group_id", mock_request.call_args[1]["data"])
+        self.assertNotIn("group_id", self._data_or_params_cs_request(mock_request))
