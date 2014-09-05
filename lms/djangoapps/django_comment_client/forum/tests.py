@@ -399,8 +399,7 @@ class InlineDiscussionGroupIdTestCase(CohortedContentTestCase, GroupIdDiscussion
             mock_request,
             pass_group_id=True
     ):
-        thread_id = "test_thread_id"
-        mock_request.side_effect = make_mock_request_impl("dummy content", thread_id)
+        mock_request.side_effect = make_mock_request_impl("dummy content", "test_thread_id")
 
         request_data = {}
         if pass_group_id:
@@ -429,8 +428,7 @@ class ForumFormDiscussionGroupIdTestCase(CohortedContentTestCase, GroupIdThreads
             mock_request,
             pass_group_id=True
     ):
-        thread_id = "test_thread_id"
-        mock_request.side_effect = make_mock_request_impl("dummy content", thread_id)
+        mock_request.side_effect = make_mock_request_impl("dummy content", "test_thread_id")
 
         request_data = {}
         if pass_group_id:
@@ -444,6 +442,70 @@ class ForumFormDiscussionGroupIdTestCase(CohortedContentTestCase, GroupIdThreads
         return views.forum_form_discussion(
             request,
             self.course.id.to_deprecated_string()
+        )
+
+    def _assert_view_returns_error(self, view_closure):
+        self.assertRaises(Http404, view_closure)
+
+
+@patch('lms.lib.comment_client.utils.requests.request')
+class UserProfileDiscussionGroupIdTestCase(CohortedContentTestCase, GroupIdThreadsTestMixin):
+    cs_call_num = 0  # The first call to the comments service is the one we care about
+
+    def call_view_with_group_id(
+            self,
+            user,
+            group_id,
+            mock_request,
+            pass_group_id=True
+    ):
+        mock_request.side_effect = make_mock_request_impl("dummy content", "test_thread_id")
+
+        request_data = {}
+        if pass_group_id:
+            request_data["group_id"] = group_id
+        request = RequestFactory().get(
+            "dummy_url",
+            data=request_data
+        )
+        request.user = user
+        mako_middleware_process_request(request)
+        return views.user_profile(
+            request,
+            self.course.id.to_deprecated_string(),
+            user.id
+        )
+
+    def _assert_view_returns_error(self, view_closure):
+        self.assertRaises(Http404, view_closure)
+
+
+@patch('lms.lib.comment_client.utils.requests.request')
+class FollowedThreadsDiscussionGroupIdTestCase(CohortedContentTestCase, GroupIdThreadsTestMixin):
+    cs_call_num = 0
+
+    def call_view_with_group_id(
+            self,
+            user,
+            group_id,
+            mock_request,
+            pass_group_id=True
+    ):
+        mock_request.side_effect = make_mock_request_impl("dummy content", "test_thread_id")
+
+        request_data = {}
+        if pass_group_id:
+            request_data["group_id"] = group_id
+        request = RequestFactory().get(
+            "dummy_url",
+            data=request_data,
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest"
+        )
+        request.user = user
+        return views.followed_threads(
+            request,
+            self.course.id.to_deprecated_string(),
+            user.id
         )
 
     def _assert_view_returns_error(self, view_closure):

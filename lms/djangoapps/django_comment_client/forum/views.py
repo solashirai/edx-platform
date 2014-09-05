@@ -344,6 +344,13 @@ def user_profile(request, course_id, user_id):
             'per_page': THREADS_PER_PAGE,   # more than threads_per_page to show more activities
         }
 
+        try:
+            group_id = get_group_id_for_comments_service(request, course_id)
+        except ValueError:
+            raise Http404
+        if group_id is not None:
+            query_params['group_id'] = group_id
+
         threads, page, num_pages = profiled_user.active_threads(query_params)
         query_params['page'] = page
         query_params['num_pages'] = num_pages
@@ -411,6 +418,13 @@ def followed_threads(request, course_id, user_id):
                 )
             )
         )
+
+        try:
+            group_id = get_group_id_for_comments_service(request, course_id)
+        except ValueError:
+            raise Http404
+        if group_id is not None:
+            query_params['group_id'] = group_id
 
         threads, page, num_pages = profiled_user.subscribed_threads(query_params)
         query_params['page'] = page

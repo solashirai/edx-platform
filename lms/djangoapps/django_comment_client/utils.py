@@ -431,7 +431,7 @@ def _get_group_id_from_request(request):
         return request.POST.get('group_id')
 
 
-def get_group_id_for_comments_service(request, course_key, commentable_id):
+def get_group_id_for_comments_service(request, course_key, commentable_id=None):
     """
     Given a user requesting content within a `commentable_id`, determine the
     group_id which should be passed to the comments service.
@@ -443,7 +443,7 @@ def get_group_id_for_comments_service(request, course_key, commentable_id):
     Raises:
         ValueError if the requested group_id is invalid
     """
-    if is_commentable_cohorted(course_key, commentable_id):
+    if commentable_id is None or is_commentable_cohorted(course_key, commentable_id):
         cc_user = cc.User.from_django_user(request.user)
         user_group_id = get_cohort_id(cc_user, course_key)
         requested_group_id = _get_group_id_from_request(request)
