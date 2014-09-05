@@ -384,7 +384,11 @@ function (HTML5Video, Resizer) {
             // is in a PAUSED state.
             //
             // Why? This is how the YouTube API is implemented.
-            this.videoPlayer.updatePlayTime(time);
+            // If time is equal to undefined then Sjson script stopped
+            // responding.
+            if (time != undefined) {
+                this.videoPlayer.updatePlayTime(time);
+            }
             if (time > 0 && this.isFlashMode()) {
                 this.videoPlayer.seekTo(time);
                 this.trigger(
