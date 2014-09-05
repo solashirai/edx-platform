@@ -404,6 +404,8 @@ class OptionInput(InputTypeBase):
                     options_string += ')'
                     option_input_elements = self.xml.xpath('//optioninput [@id="' + self.input_id + '"]')
                     if option_input_elements:
+                        # in this case there will only be a single element. self.xml is actually a fragment with
+                        # 'optioninput' as the root element and with 'id' equal to the value in the test.
                         option_input_element = option_input_elements[0]
                         option_input_element.attrib.update({'options': options_string})
                         option_input_element.attrib.update({'correct': correct_option})
