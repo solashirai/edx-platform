@@ -10,7 +10,7 @@ from edxmako.tests import mako_middleware_process_request
 from xmodule.modulestore.tests.django_utils import ModuleStoreTestCase
 from django.core.urlresolvers import reverse
 from util.testing import UrlResetMixin
-from django_comment_client.tests.group_id import GroupIdTestMixin
+from django_comment_client.tests.group_id import GroupIdDiscussionTestMixin, GroupIdThreadsTestMixin
 from django_comment_client.tests.unicode import UnicodeTestMixin
 from django_comment_client.tests.utils import CohortedContentTestCase
 from django_comment_client.forum import views
@@ -336,7 +336,7 @@ class SingleCohortedThreadTestCase(ModuleStoreTestCase):
 
 
 @patch('lms.lib.comment_client.utils.requests.request')
-class SingleThreadGroupIdTestCase(CohortedContentTestCase, GroupIdTestMixin):
+class SingleThreadGroupIdTestCase(CohortedContentTestCase, GroupIdDiscussionTestMixin):
     def call_view_with_group_id(
             self,
             user,
@@ -369,7 +369,7 @@ class SingleThreadGroupIdTestCase(CohortedContentTestCase, GroupIdTestMixin):
 
 
 @patch('lms.lib.comment_client.utils.requests.request')
-class GetThreadsGroupIdTestCase(CohortedContentTestCase, GroupIdTestMixin):
+class GetThreadsGroupIdTestCase(CohortedContentTestCase, GroupIdDiscussionTestMixin):
     def call_view_with_group_id(
         self,
         user,
@@ -390,7 +390,7 @@ class GetThreadsGroupIdTestCase(CohortedContentTestCase, GroupIdTestMixin):
 
 
 @patch('lms.lib.comment_client.utils.requests.request')
-class InlineDiscussionGroupIdTestCase(CohortedContentTestCase, GroupIdTestMixin):
+class InlineDiscussionGroupIdTestCase(CohortedContentTestCase, GroupIdDiscussionTestMixin):
     def call_view_with_group_id(
             self,
             user,
@@ -420,6 +420,34 @@ class InlineDiscussionGroupIdTestCase(CohortedContentTestCase, GroupIdTestMixin)
         self.assertRaises(Http404, view_closure)
 
 
+@patch('lms.lib.comment_client.utils.requests.request')
+class ForumFormDiscussionGroupIdTestCase(CohortedContentTestCase, GroupIdThreadsTestMixin):
+    def call_view_with_group_id(
+            self,
+            user,
+            group_id,
+            mock_request,
+            pass_group_id=True
+    ):
+        thread_id = "test_thread_id"
+        mock_request.side_effect = make_mock_request_impl("dummy content", thread_id)
+
+        request_data = {}
+        if pass_group_id:
+            request_data["group_id"] = group_id
+        request = RequestFactory().get(
+            "dummy_url",
+            data=request_data
+        )
+        request.user = user
+        mako_middleware_process_request(request)
+        return views.forum_form_discussion(
+            request,
+            self.course.id.to_deprecated_string()
+        )
+
+    def _assert_view_returns_error(self, view_closure):
+        self.assertRaises(Http404, view_closure)
 
 
 @override_settings(MODULESTORE=TEST_DATA_MIXED_MODULESTORE)

@@ -185,7 +185,7 @@ def forum_form_discussion(request, course_id):
         log.warning("Forum is in maintenance mode")
         return render_to_response('discussion/maintenance.html', {})
     except ValueError:
-        return Http404
+        raise Http404
 
     with newrelic.agent.FunctionTrace(nr_transaction, "get_metadata_for_threads"):
         annotated_content_info = utils.get_metadata_for_threads(course_id, threads, request.user, user_info)

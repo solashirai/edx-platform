@@ -12,7 +12,7 @@ from opaque_keys.edx.locations import SlashSeparatedCourseKey
 
 from courseware.tests.modulestore_config import TEST_DATA_MIXED_MODULESTORE
 from django_comment_client.base import views
-from django_comment_client.tests.group_id import GroupIdTestMixin
+from django_comment_client.tests.group_id import GroupIdDiscussionTestMixin
 from django_comment_client.tests.utils import CohortedContentTestCase
 from django_comment_client.tests.unicode import UnicodeTestMixin
 from django_comment_common.models import Role, FORUM_ROLE_STUDENT
@@ -37,7 +37,7 @@ class MockRequestSetupMixin(object):
 
 
 @patch('lms.lib.comment_client.utils.requests.request')
-class CreateThreadGroupIdTestCase(CohortedContentTestCase, GroupIdTestMixin):
+class CreateThreadGroupIdTestCase(CohortedContentTestCase, GroupIdDiscussionTestMixin):
     def call_view_with_group_id(
             self,
             user,
