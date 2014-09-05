@@ -17,7 +17,6 @@ import sys
 import logging
 import copy
 import re
-import threading
 from uuid import uuid4
 
 from bson.son import SON
@@ -34,7 +33,7 @@ from xblock.runtime import KvsFieldData
 from xblock.exceptions import InvalidScopeError
 from xblock.fields import Scope, ScopeIds, Reference, ReferenceList, ReferenceValueDict
 
-from xmodule.modulestore import ModuleStoreWriteBase, ModuleStoreEnum
+from xmodule.modulestore import ModuleStoreWriteBase, ModuleStoreEnum, BulkOperationsMixin, BulkWriteRecord
 from xmodule.modulestore.draft_and_published import ModuleStoreDraftAndPublished, DIRECT_ONLY_CATEGORIES
 from opaque_keys.edx.locations import Location
 from xmodule.modulestore.exceptions import ItemNotFoundError, DuplicateCourseError, ReferentialIntegrityError
@@ -384,7 +383,54 @@ def as_published(location):
     return location.replace(revision=MongoRevisionKey.published)
 
 
-class MongoModuleStore(ModuleStoreDraftAndPublished, ModuleStoreWriteBase):
+class MongoBulkWriteRecord(BulkWriteRecord):
+    """
+    Tracks whether there've been any writes per course
+    """
+    def __init__(self):
+        super(MongoBulkWriteRecord, self).__init__()
+        self.dirty = False
+
+
+class MongoBulkWriteMixin(BulkOperationsMixin):
+    """
+    Mongo bulk operation support
+    """
+    def __init__(self, *args, **kwargs):
+        super(MongoBulkWriteMixin, self).__init__(*args, **kwargs)
+
+    @property
+    def _bulk_write_record_type(self):
+        """
+        Get the relevant right type of bulk_write_error for the mixin (overriding classes should override
+        this method)
+        """
+        return MongoBulkWriteRecord
+
+    def _start_outermost_bulk_operation(self, bulk_write_record, course_key):
+        """
+        Prevent updating the meta-data inheritance cache for the given course
+        """
+        pass
+
+    def _end_outermost_bulk_operation(self, bulk_write_record, course_id):
+        """
+        Restart updating the meta-data inheritance cache for the given course.
+        Refresh the meta-data inheritance cache now since it was temporarily disabled.
+        """
+        if bulk_write_record.dirty:
+            self.refresh_cached_metadata_inheritance_tree(course_id)
+
+    def _is_bulk_write_in_progress(self, course_id, ignore_case=False):
+        """
+        Returns whether a bulk write operation is in progress for the given course.
+        """
+        return super(MongoBulkWriteMixin, self)._is_bulk_write_in_progress(
+            course_id.for_branch(None), ignore_case
+        )
+
+
+class MongoModuleStore(ModuleStoreDraftAndPublished, ModuleStoreWriteBase, MongoBulkWriteMixin):
     """
     A Mongodb backed ModuleStore
     """
@@ -441,9 +487,6 @@ class MongoModuleStore(ModuleStoreDraftAndPublished, ModuleStoreWriteBase):
         self.i18n_service = i18n_service
         self.fs_service = fs_service
 
-        # performance optimization to prevent updating the meta-data inheritance tree during
-        # bulk write operations
-        self.ignore_write_events_on_courses = threading.local()
         self._course_run_cache = {}
 
     def close_connections(self):
@@ -463,37 +506,6 @@ class MongoModuleStore(ModuleStoreDraftAndPublished, ModuleStoreWriteBase):
         connection = self.collection.database.connection
         connection.drop_database(self.collection.database)
         connection.close()
-
-    def _begin_bulk_operation(self, course_id):
-        """
-        Prevent updating the meta-data inheritance cache for the given course
-        """
-        if not hasattr(self.ignore_write_events_on_courses, 'courses'):
-            self.ignore_write_events_on_courses.courses = set()
-
-        self.ignore_write_events_on_courses.courses.add(course_id)
-
-    def _end_bulk_operation(self, course_id):
-        """
-        Restart updating the meta-data inheritance cache for the given course.
-        Refresh the meta-data inheritance cache now since it was temporarily disabled.
-        """
-        if not hasattr(self.ignore_write_events_on_courses, 'courses'):
-            return
-
-        if course_id in self.ignore_write_events_on_courses.courses:
-            self.ignore_write_events_on_courses.courses.remove(course_id)
-            self.refresh_cached_metadata_inheritance_tree(course_id)
-
-    def _is_bulk_write_in_progress(self, course_id):
-        """
-        Returns whether a bulk write operation is in progress for the given course.
-        """
-        if not hasattr(self.ignore_write_events_on_courses, 'courses'):
-            return False
-
-        course_id = course_id.for_branch(None)
-        return course_id in self.ignore_write_events_on_courses.courses
 
     def fill_in_run(self, course_key):
         """
@@ -655,7 +667,7 @@ class MongoModuleStore(ModuleStoreDraftAndPublished, ModuleStoreWriteBase):
         a runtime may mean that some objects report old values for inherited data.
         """
         course_id = course_id.for_branch(None)
-        if not self._is_bulk_write_in_progress(course_id):
+        if not self._is_in_bulk_write_operation(course_id):
             # below is done for side effects when runtime is None
             cached_metadata = self._get_cached_metadata_inheritance_tree(course_id, force_refresh=True)
             if runtime:
@@ -1137,7 +1149,8 @@ class MongoModuleStore(ModuleStoreDraftAndPublished, ModuleStoreWriteBase):
         Set update on the specified item, and raises ItemNotFoundError
         if the location doesn't exist
         """
-
+        bulk_record = self._get_bulk_write_record(location.course_key)
+        bulk_record.dirty = True
         # See http://www.mongodb.org/display/DOCS/Updating for
         # atomic update syntax
         result = self.collection.update(
@@ -1205,7 +1218,7 @@ class MongoModuleStore(ModuleStoreDraftAndPublished, ModuleStoreWriteBase):
             # don't update the subtree info for descendants of the publish root for efficiency
             if (
                 (not isPublish or (isPublish and is_publish_root)) and
-                not self._is_bulk_write_in_progress(xblock.location.course_key)
+                not self._is_in_bulk_write_operation(xblock.location.course_key)
             ):
                 ancestor_payload = {
                     'edit_info.subtree_edited_on': now,
@@ -1224,7 +1237,6 @@ class MongoModuleStore(ModuleStoreDraftAndPublished, ModuleStoreWriteBase):
                 raise
             elif not self.has_course(xblock.location.course_key):
                 raise ItemNotFoundError(xblock.location.course_key)
-
 
         return xblock
 
@@ -1257,6 +1269,9 @@ class MongoModuleStore(ModuleStoreDraftAndPublished, ModuleStoreWriteBase):
         from orphan parents to avoid parents calculation overhead next time.
         """
         non_orphan_parents = []
+        # get bulk_record once rather than for each iteration
+        bulk_record = self._get_bulk_write_record(location.course_key)
+
         for parent in parents:
             parent_loc = Location._from_deprecated_son(parent['_id'], location.course_key.run)
 
@@ -1266,6 +1281,7 @@ class MongoModuleStore(ModuleStoreDraftAndPublished, ModuleStoreWriteBase):
                 current_loc = ancestor_loc
                 ancestor_loc = self._get_raw_parent_location(current_loc, revision)
                 if ancestor_loc is None:
+                    bulk_record.dirty = True
                     # The parent is an orphan, so remove all the children including
                     # the location whose parent we are looking for from orphan parent
                     self.collection.update(
