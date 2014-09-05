@@ -20,8 +20,8 @@ class CohortedContentTestCase(ModuleStoreTestCase):
 
         self.course = CourseFactory.create(
             discussion_topics={
-                "cohorted topic": {"id": "cohorted_topic"},
-                "non-cohorted topic": {"id": "non_cohorted_topic"},
+                "cohorted_topic": {"id": "cohorted_topic"},
+                "non_cohorted_topic": {"id": "non_cohorted_topic"},
             },
             cohort_config={
                 "cohorted": True,
@@ -47,17 +47,3 @@ class CohortedContentTestCase(ModuleStoreTestCase):
         self.moderator.roles.add(Role.objects.get(name="Moderator", course_id=self.course.id))
         self.student_cohort.users.add(self.student)
         self.moderator_cohort.users.add(self.moderator)
-
-    def _data_or_params_cs_request(self, mock_request):
-        if mock_request.call_args[0][0] == "get":
-            return mock_request.call_args[1]["params"]
-        elif mock_request.call_args[0][0] == "post":
-            return mock_request.call_args[1]["data"]
-
-    def _assert_comments_service_called_with_group_id(self, mock_request, group_id):
-        self.assertTrue(mock_request.called)
-        self.assertEqual(self._data_or_params_cs_request(mock_request)["group_id"], group_id)
-
-    def _assert_comments_service_called_without_group_id(self, mock_request):
-        self.assertTrue(mock_request.called)
-        self.assertNotIn("group_id", self._data_or_params_cs_request(mock_request))
