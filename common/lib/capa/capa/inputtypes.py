@@ -373,7 +373,7 @@ class OptionInput(InputTypeBase):
 
     def __init__(self, system, xml, state):
         super(OptionInput, self).__init__(system, xml, state)
-        self._option_elements_to_attribute_string()          # if the problem follows the latest schema...
+        self._option_elements_to_attribute_string()  # if the problem follows the latest schema
 
     def _option_elements_to_attribute_string(self):
         """
@@ -384,8 +384,8 @@ class OptionInput(InputTypeBase):
         it did previously so no code is broken.
         :return: None
         """
-        problem_element_list = self.xml.xpath('/problem')           # get the root element <problem>
-        if problem_element_list:                                    # if there is a root element (belt and suspenders)
+        problem_element_list = self.xml.xpath('/problem')  # get the root element <problem>
+        if problem_element_list:  # if there is a root element (belt and suspenders)
             problem_element = problem_element_list[0]
 
             if 'schema' in problem_element.attrib:
@@ -1551,8 +1551,8 @@ class AnnotationInput(InputTypeBase):
     def setup(self):
         xml = self.xml
 
-        self.debug = False  # set to True to display extra debug info with input
-        self.return_to_annotation = True  # return only works in conjunction with annotatable xmodule
+        self.debug = False   # set to True to display extra debug info with input
+        self.return_to_annotation = True   # return only works in conjunction with annotatable xmodule
 
         self.title = xml.findtext('./title', 'Annotation Exercise')
         self.text = xml.findtext('./text')

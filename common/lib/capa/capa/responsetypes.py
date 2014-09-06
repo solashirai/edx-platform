@@ -149,7 +149,7 @@ class LoncapaResponse(object):
 
         """
         self.xml = xml
-        self.original_xml = copy.deepcopy(xml)      # copy of the original, unaltered XML for the benefit of hints
+        self.original_xml = copy.deepcopy(xml)  # copy of the original, unaltered XML for the benefit of hints
 
         self.inputfields = inputfields
         self.context = context
@@ -264,8 +264,8 @@ class LoncapaResponse(object):
         using_extended_hints = False  # assume we are not using new style hints
         xproblem_element = self.xml.getroottree().xpath('.')
         schema_version = xproblem_element[0].get('schema')
-        if schema_version == 'edXML/1.0':                           # this is the right schema
-            using_extended_hints = True                            # turns out we are using new style hints
+        if schema_version == 'edXML/1.0':  # this is the right schema
+            using_extended_hints = True  # turns out we are using new style hints
         return using_extended_hints
 
     def get_compound_condition_hints(self, new_cmap, student_answers):  # pylint: disable=W0613
@@ -294,12 +294,12 @@ class LoncapaResponse(object):
         Return True if new style hints were found
         """
         extended_hints_found = False
-        if len(student_answers) > 0:                        # if the student has supplied at least one selection
-            if self._using_extended_hints():               # if we are using new style hints
-                extended_hints_found = True                # note that new style hints may be used
-                compound_rule_matched = self.get_compound_condition_hints(new_cmap, student_answers)    # add hint text to 'new_cmap', if any
-                if not compound_rule_matched:               # if no compound rules matched
-                    self.get_distractor_hints(new_cmap, student_answers)      # add hint text to 'new_cmap', if any
+        if len(student_answers) > 0:  # if the student has supplied at least one selection
+            if self._using_extended_hints():  # if we are using new style hints
+                extended_hints_found = True  # note that new style hints may be used
+                compound_rule_matched = self.get_compound_condition_hints(new_cmap, student_answers)  # add hint text to 'new_cmap', if any
+                if not compound_rule_matched:  # if no compound rules matched
+                    self.get_distractor_hints(new_cmap, student_answers)  # add hint text to 'new_cmap', if any
         return extended_hints_found
 
     def get_hints(self, student_answers, new_cmap, old_cmap):
@@ -320,7 +320,7 @@ class LoncapaResponse(object):
             if hintfn is not None:
                 hint_function_provided = True
 
-        if hint_function_provided:                  # if a hint function has been supplied, it will take precedence
+        if hint_function_provided:  # if a hint function has been supplied, it will take precedence
             # Hint is determined by a function defined in the <script> context; evaluate
             # that function to obtain list of hint, hintmode for each answer_id.
 
@@ -372,9 +372,9 @@ class LoncapaResponse(object):
                 raise ResponseError(msg)
 
             new_cmap.set_dict(globals_dict['new_cmap_dict'])
-        else:                   # no hint function provided
+        else:  # no hint function provided
             extended_hints_found = self.get_xml_hints(student_answers, new_cmap)  # check for and handle extended hints
-            if not extended_hints_found:            # if no extended hints were found, revert to older style hinting
+            if not extended_hints_found:  # if no extended hints were found, revert to older style hinting
                 # hint specified by conditions and text dependent on conditions (a-la Loncapa design)
                 # see http://help.loncapa.org/cgi-bin/fom?file=291
                 #
@@ -814,7 +814,7 @@ class ChoiceResponse(LoncapaResponse):
         for index, choice in enumerate(self.xml.xpath('//*[@id=$id]//choice',
                                                       id=self.xml.get('id'))):
             if not choice.get('id'):
-                choice.set("id", chr(ord("A") + index))   # each choice gets a default 'id' of A,B,C...
+                choice.set("id", chr(ord("A") + index))  # each choice gets a default 'id' of A,B,C...
             choice.set("name", "choice_" + str(index))
 
     def get_score(self, student_answers):
@@ -852,7 +852,7 @@ class ChoiceResponse(LoncapaResponse):
         :param student_answers: the set of answer choices made by the student
         :return:                true if at least one compound condition hint matched
         """
-        compound_hint_matched = False       # assume we won't find any matching rules
+        compound_hint_matched = False  # assume we won't find any matching rules
         for student_answer_id in student_answers:
             if unicode(self.answer_id) == student_answer_id:
                 choice_test = '[@id="' + student_answer_id + '"]'
@@ -860,21 +860,21 @@ class ChoiceResponse(LoncapaResponse):
                 selection_id_list = []              # create a list of all the student's selected id's
                 for student_answer in student_answers[student_answer_id]:
                     choice_list = self.xml.xpath('checkboxgroup/choice [@name="' + str(student_answer) + '"]')
-                    if choice_list:             # if we found at least one choice element
+                    if choice_list:  # if we found at least one choice element
                         choice = choice_list[0]
                         selection_id_list.append(choice.get('id').upper())
-                selection_id_list.sort()        # sort the list to make comparison easier
+                selection_id_list.sort()  # sort the list to make comparison easier
 
                 for boolean_hint_element in self.xml.xpath('//checkboxgroup' + choice_test + '/booleanhint'):
                     boolean_condition_string = boolean_hint_element.get("value").upper()
                     boolean_condition_string = boolean_condition_string.replace("AND", " ")  # delete optional 'AND' operator
-                    boolean_condition_string = boolean_condition_string.replace("*", " ")    # delete any '*' operator
+                    boolean_condition_string = boolean_condition_string.replace("*", " ")  # delete any '*' operator
 
                     boolean_condition_list = []
                     for boolean_conditon_token in boolean_condition_string.split(" "):
                         if len(boolean_conditon_token.strip()) > 0:
                             boolean_condition_list.append(boolean_conditon_token)
-                    boolean_condition_list.sort()   # sort the list to make comparison easier
+                    boolean_condition_list.sort()  # sort the list to make comparison easier
 
                     if boolean_condition_list == selection_id_list:
                         compound_hint_matched = True
@@ -964,9 +964,9 @@ class MultipleChoiceResponse(LoncapaResponse):
                     if len(choice_hint_text) > 0:
                         choice_hint_label = choice_hint.get('label')
 
-                        message_style_class = QUESTION_HINT_INCORRECT_STYLE         # assume the answer was incorrect
+                        message_style_class = QUESTION_HINT_INCORRECT_STYLE  # assume the answer was incorrect
                         if choice.get('correct').upper() == 'TRUE':
-                            message_style_class = QUESTION_HINT_CORRECT_STYLE       # guessed wrong, answer was correct
+                            message_style_class = QUESTION_HINT_CORRECT_STYLE  # guessed wrong, answer was correct
 
                         if choice_hint_label:
                             correctness_string = choice_hint_label + ': '
@@ -1323,9 +1323,9 @@ class OptionResponse(LoncapaResponse):
                             if len(option_hint_text) > 0:
                                 option_hint_label = option_hint.get('label')
 
-                                message_style_class = QUESTION_HINT_INCORRECT_STYLE         # assume the answer was incorrect
+                                message_style_class = QUESTION_HINT_INCORRECT_STYLE  # assume the answer was incorrect
                                 if option.get('correct').upper() == 'TRUE':
-                                    message_style_class = QUESTION_HINT_CORRECT_STYLE       # guessed wrong, answer was correct
+                                    message_style_class = QUESTION_HINT_CORRECT_STYLE  # guessed wrong, answer was correct
 
                                 if option_hint_label:
                                     correctness_string = option_hint_label + ': '
@@ -1527,7 +1527,7 @@ class NumericalResponse(LoncapaResponse):
             correctness_string = hint_label + ': '
         else:
             # Translators: these correctness_string values indicate to the student whether the answer is correct or not.
-            correctness_string = _("INCORRECT: ")   # assume the answer is incorrect
+            correctness_string = _("INCORRECT: ")  # assume the answer is incorrect
             if is_correct:
                 correctness_string = _("CORRECT: ")
         return correctness_string
@@ -1714,7 +1714,7 @@ class StringResponse(LoncapaResponse):
         """
         result = False
         if answer:
-            if isinstance(answer, basestring):              # force answer to be a list
+            if isinstance(answer, basestring):  # force answer to be a list
                 answer = [answer]
 
             _ = self.capa_system.i18n.ugettext
@@ -1731,7 +1731,7 @@ class StringResponse(LoncapaResponse):
                 answer = answer[0].strip()
                 if self.case_insensitive:
                     test_pattern = test_pattern.upper()
-                    answer = answer.upper()     # pylint: disable=maybe-no-member
+                    answer = answer.upper()  # pylint: disable=maybe-no-member
                 result = (test_pattern == answer)
         return result
 
