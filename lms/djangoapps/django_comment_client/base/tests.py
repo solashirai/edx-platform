@@ -38,6 +38,8 @@ class MockRequestSetupMixin(object):
 
 @patch('lms.lib.comment_client.utils.requests.request')
 class CreateThreadGroupIdTestCase(CohortedContentTestCase, GroupIdDiscussionTestMixin):
+    cs_endpoint = "/threads"
+
     def call_view_with_group_id(
             self,
             user,
