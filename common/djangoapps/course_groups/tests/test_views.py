@@ -4,6 +4,8 @@ from django.test.client import RequestFactory
 from django.test.utils import override_settings
 from factory import post_generation, Sequence
 from factory.django import DjangoModelFactory
+from helpers import config_course_cohorts
+from collections import namedtuple
 
 from django.http import Http404
 from django.contrib.auth.models import User
@@ -149,6 +151,25 @@ class ListCohortsTestCase(CohortViewsTestCase):
             course_id=self.course.id,
             group_type=CourseUserGroup.COHORT
         )
+        self.verify_lists_expected_cohorts(self.request_list_cohorts(self.course), expected_cohorts)
+
+    def test_auto_cohorts(self):
+        """
+        Verify that auto cohorts are included in the response.
+        """
+        config_course_cohorts(self.course, [], cohorted=True, auto_cohort=True,
+                              auto_cohort_groups=["AutoGroup1", "AutoGroup2"])
+
+        # Will create cohort1, cohort2, and cohort3. Auto cohorts remain uncreated.
+        self._create_cohorts()
+        cohort = namedtuple("Cohort", "name id")
+        expected_cohorts = [
+            cohort(name=self.cohort1.name, id=self.cohort1.id),
+            cohort(name=self.cohort2.name, id=self.cohort2.id),
+            cohort(name=self.cohort3.name, id=self.cohort3.id),
+            cohort(name="AutoGroup1", id=self.cohort3.id+1),
+            cohort(name="AutoGroup2", id=self.cohort3.id+2),
+        ]
         self.verify_lists_expected_cohorts(self.request_list_cohorts(self.course), expected_cohorts)
 
 

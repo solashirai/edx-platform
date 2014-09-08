@@ -46,7 +46,9 @@ def list_cohorts(request, course_key_string):
     # this is a string when we get it here
     course_key = SlashSeparatedCourseKey.from_deprecated_string(course_key_string)
 
-    get_course_with_access(request.user, 'staff', course_key)
+    course = get_course_with_access(request.user, 'staff', course_key)
+
+    cohorts.create_auto_cohorts(course)
 
     all_cohorts = [{'name': c.name, 'id': c.id}
                    for c in cohorts.get_course_cohorts(course_key)]

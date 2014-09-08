@@ -160,6 +160,18 @@ def get_cohort(user, course_key):
     return group
 
 
+def create_auto_cohorts(course):
+    """
+    Ensures that all explicitly defined auto cohort groups have been created.
+    """
+    for group_name in course.auto_cohort_groups:
+        CourseUserGroup.objects.get_or_create(
+            course_id=course.location.course_key,
+            group_type=CourseUserGroup.COHORT,
+            name=group_name
+        )
+
+
 def get_course_cohorts(course_key):
     """
     Get a list of all the cohorts in the given course.
