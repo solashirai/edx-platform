@@ -35,6 +35,7 @@ from xblock.django.request import django_to_webob_request, webob_to_django_respo
 from xmodule.error_module import ErrorDescriptor, NonStaffErrorDescriptor
 from xmodule.exceptions import NotFoundError, ProcessingError
 from opaque_keys.edx.locations import SlashSeparatedCourseKey
+from xmodule.contentstore.django import contentstore
 from xmodule.modulestore.django import modulestore, ModuleI18nService
 from xmodule.modulestore.exceptions import ItemNotFoundError
 from xmodule.util.duedate import get_extended_due_date
@@ -432,6 +433,12 @@ def get_module_system_for_user(user, field_data_cache,
         module.runtime = inner_system
         inner_system.xmodule_instance = module
 
+    def get_python_lib_zip():
+        """Return the bytes of the python_lib.zip file, if any."""
+        asset_key = course_id.make_asset_key("asset", "python_lib.zip")
+        zip_lib = contentstore().find(asset_key, throw_on_not_found=False)
+        return zip_lib
+
     # Build a list of wrapping functions that will be applied in order
     # to the Fragment content coming out of the xblocks that are about to be rendered.
     block_wrappers = []
@@ -530,6 +537,7 @@ def get_module_system_for_user(user, field_data_cache,
         s3_interface=s3_interface,
         cache=cache,
         can_execute_unsafe_code=(lambda: can_execute_unsafe_code(course_id)),
+        get_python_lib_zip=get_python_lib_zip,
         # TODO: When we merge the descriptor and module systems, we can stop reaching into the mixologist (cpennington)
         mixins=descriptor.runtime.mixologist._mixins,  # pylint: disable=protected-access
         wrappers=block_wrappers,
