@@ -40,14 +40,7 @@ class MockRequestSetupMixin(object):
 class CreateThreadGroupIdTestCase(CohortedContentTestCase, GroupIdDiscussionTestMixin):
     cs_endpoint = "/threads"
 
-    def call_view_with_group_id(
-            self,
-            user,
-            commentable_id,
-            group_id,
-            mock_request,
-            pass_group_id=True
-    ):
+    def call_view(self, user, commentable_id, group_id, mock_request, pass_group_id=True):
         mock_request.return_value.status_code = 200
         request_data = {"body": "body", "title": "title", "thread_type": "discussion"}
         if pass_group_id:

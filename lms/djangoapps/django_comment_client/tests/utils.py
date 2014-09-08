@@ -20,8 +20,8 @@ class CohortedContentTestCase(ModuleStoreTestCase):
 
         self.course = CourseFactory.create(
             discussion_topics={
-                "cohorted_topic": {"id": "cohorted_topic"},
-                "non_cohorted_topic": {"id": "non_cohorted_topic"},
+                "cohorted topic": {"id": "cohorted_topic"},
+                "non-cohorted topic": {"id": "non_cohorted_topic"},
             },
             cohort_config={
                 "cohorted": True,

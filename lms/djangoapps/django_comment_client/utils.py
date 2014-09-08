@@ -424,13 +424,6 @@ def add_thread_group_name(thread_info, course_key):
         thread_info['group_name'] = get_cohort_by_id(course_key, thread_info.get('group_id')).name
 
 
-def _get_group_id_from_request(request):
-    if request.method == "GET":
-        return request.GET.get('group_id')
-    elif request.method == "POST":
-        return request.POST.get('group_id')
-
-
 def get_group_id_for_comments_service(request, course_key, commentable_id=None):
     """
     Given a user requesting content within a `commentable_id`, determine the
@@ -444,7 +437,10 @@ def get_group_id_for_comments_service(request, course_key, commentable_id=None):
         ValueError if the requested group_id is invalid
     """
     if commentable_id is None or is_commentable_cohorted(course_key, commentable_id):
-        requested_group_id = _get_group_id_from_request(request)
+        if request.method == "GET":
+            requested_group_id = request.GET.get('group_id')
+        elif request.method == "POST":
+            requested_group_id = request.POST.get('group_id')
         if cached_has_permission(request.user, "see_all_cohorts", course_key):
             if not requested_group_id:
                 return None

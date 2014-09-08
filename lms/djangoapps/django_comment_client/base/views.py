@@ -104,12 +104,6 @@ def create_thread(request, course_id, commentable_id):
         title=post["title"]
     )
 
-    user = cc.User.from_django_user(request.user)
-
-    #kevinchugh because the new requirement is that all groups will be determined
-    #by the group id in the request this all goes away
-    #not anymore, only for admins
-
     # Cohort the thread if required
     try:
         group_id = get_group_id_for_comments_service(request, course_key, commentable_id)

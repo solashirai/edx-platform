@@ -5,7 +5,7 @@ import xml.sax.saxutils as saxutils
 from django.contrib.auth.decorators import login_required
 from django.core.context_processors import csrf
 from django.contrib.auth.models import User
-from django.http import Http404
+from django.http import Http404, HttpResponseBadRequest
 from django.views.decorators.http import require_GET
 import newrelic.agent
 
@@ -75,6 +75,7 @@ def get_threads(request, course_key, discussion_id=None, per_page=THREADS_PER_PA
         'commentable_id': discussion_id,
         'course_id': course_key.to_deprecated_string(),
         'user_id': request.user.id,
+        'group_id': get_group_id_for_comments_service(request, course_key, discussion_id),  # may raise ValueError
     }
 
     if not request.GET.get('sort_key'):
@@ -92,10 +93,6 @@ def get_threads(request, course_key, discussion_id=None, per_page=THREADS_PER_PA
     #there are 2 dimensions to consider when executing a search with respect to group id
     #is user a moderator
     #did the user request a group
-
-    # get_group_id_for_comments_service may raise ValueError
-    group_id = get_group_id_for_comments_service(request, course_key, discussion_id)
-    default_query_params["group_id"] = group_id
 
     query_params = merge_dict(
         default_query_params,
@@ -148,7 +145,7 @@ def inline_discussion(request, course_id, discussion_id):
     try:
         threads, query_params = get_threads(request, course_id, discussion_id, per_page=INLINE_THREADS_PER_PAGE)
     except ValueError:
-        raise Http404
+        return HttpResponseBadRequest("Invalid group_id")
 
     with newrelic.agent.FunctionTrace(nr_transaction, "get_metadata_for_threads"):
         annotated_content_info = utils.get_metadata_for_threads(course_id, threads, request.user, user_info)
@@ -185,7 +182,7 @@ def forum_form_discussion(request, course_id):
         log.warning("Forum is in maintenance mode")
         return render_to_response('discussion/maintenance.html', {})
     except ValueError:
-        raise Http404
+        return HttpResponseBadRequest("Invalid group_id")
 
     with newrelic.agent.FunctionTrace(nr_transaction, "get_metadata_for_threads"):
         annotated_content_info = utils.get_metadata_for_threads(course_id, threads, request.user, user_info)
@@ -241,6 +238,9 @@ def single_thread(request, course_id, discussion_id, thread_id):
     user_info = cc_user.to_dict()
     is_moderator = cached_has_permission(request.user, "see_all_cohorts", course_key)
 
+    # Currently, the front end always loads responses via AJAX, even for this
+    # page; it would be a nice optimization to avoid that extra round trip to
+    # the comments service.
     try:
         thread = cc.Thread.find(thread_id).retrieve(
             recursive=request.is_ajax(),
@@ -256,15 +256,13 @@ def single_thread(request, course_id, discussion_id, thread_id):
     # verify that the thread belongs to the requesting student's cohort
     if is_commentable_cohorted(course_key, discussion_id) and not is_moderator:
         try:
-            student_group_id = int(request.GET.get("group_id"))
+            group_id = get_cohort_id(request.user, course_key)
         except ValueError:
+            # course_key does not exist
             raise Http404
-        if student_group_id != thread.group_id:
+        if group_id != thread.group_id:
             raise Http404
 
-    # Currently, the front end always loads responses via AJAX, even for this
-    # page; it would be a nice optimization to avoid that extra round trip to
-    # the comments service.
     is_staff = cached_has_permission(request.user, 'openclose_thread', course.id)
     if request.is_ajax():
         with newrelic.agent.FunctionTrace(nr_transaction, "get_annotated_content_infos"):
@@ -343,7 +341,7 @@ def user_profile(request, course_id, user_id):
         try:
             group_id = get_group_id_for_comments_service(request, course_id)
         except ValueError:
-            raise Http404
+            return HttpResponseBadRequest("Invalid group_id")
         if group_id is not None:
             query_params['group_id'] = group_id
 
@@ -418,7 +416,7 @@ def followed_threads(request, course_id, user_id):
         try:
             group_id = get_group_id_for_comments_service(request, course_id)
         except ValueError:
-            raise Http404
+            return HttpResponseBadRequest("Invalid group_id")
         if group_id is not None:
             query_params['group_id'] = group_id
 
