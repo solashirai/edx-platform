@@ -411,44 +411,6 @@ class TestCohorts(django.test.TestCase):
             lambda: cohorts.add_user_to_cohort(first_cohort, "non_existent_username")
         )
 
-    def test_get_course_cohort_names(self):
-        """
-        Make sure cohorts.get_course_cohort_names() properly returns a list of cohort
-        names for a given course.
-        """
-        course = modulestore().get_course(self.toy_course_key)
-
-        self.assertItemsEqual(
-            cohorts.get_course_cohort_names(course.id),
-            []
-        )
-        self.assertItemsEqual(
-            cohorts.get_course_cohort_names(SlashSeparatedCourseKey('course', 'does_not', 'exist')),
-            []
-        )
-
-        CourseUserGroup.objects.create(
-            name="FirstCohort",
-            course_id=course.id,
-            group_type=CourseUserGroup.COHORT
-        )
-
-        self.assertItemsEqual(
-            cohorts.get_course_cohort_names(course.id),
-            ["FirstCohort"]
-        )
-
-        CourseUserGroup.objects.create(
-            name="SecondCohort",
-            course_id=course.id,
-            group_type=CourseUserGroup.COHORT
-        )
-
-        self.assertItemsEqual(
-            cohorts.get_course_cohort_names(course.id),
-            ["FirstCohort", "SecondCohort"]
-        )
-
     def test_delete_empty_cohort(self):
         """
         Make sure that cohorts.delete_empty_cohort() properly removes an empty cohort

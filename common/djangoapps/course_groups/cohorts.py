@@ -281,13 +281,6 @@ def add_user_to_cohort(cohort, username_or_email):
     return (user, previous_cohort)
 
 
-def get_course_cohort_names(course_key):
-    """
-    Return a list of the cohort names in a course.
-    """
-    return [c.name for c in get_course_cohorts(course_key)]
-
-
 def delete_empty_cohort(course_key, name):
     """
     Remove an empty cohort.  Raise ValueError if cohort is not empty.
