@@ -444,11 +444,9 @@ def get_group_id_for_comments_service(request, course_key, commentable_id=None):
         ValueError if the requested group_id is invalid
     """
     if commentable_id is None or is_commentable_cohorted(course_key, commentable_id):
-        cc_user = cc.User.from_django_user(request.user)
-        user_group_id = get_cohort_id(cc_user, course_key)
         requested_group_id = _get_group_id_from_request(request)
         if cached_has_permission(request.user, "see_all_cohorts", course_key):
-            if requested_group_id is None or requested_group_id == "":
+            if not requested_group_id:
                 return None
             try:
                 group_id = int(requested_group_id)
@@ -456,8 +454,8 @@ def get_group_id_for_comments_service(request, course_key, commentable_id=None):
             except CourseUserGroup.DoesNotExist:
                 raise ValueError
         else:
-            # regular users always post with their own id.
-            group_id = user_group_id
+            # regular users always query with their own id.
+            group_id = get_cohort_id(request.user, course_key)
         return group_id
     else:
         # Never pass a group_id to the comments service for a non-cohorted

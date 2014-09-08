@@ -239,36 +239,32 @@ def single_thread(request, course_id, discussion_id, thread_id):
     course_settings = make_course_settings(course, include_category_map=True)
     cc_user = cc.User.from_django_user(request.user)
     user_info = cc_user.to_dict()
-
-    # Currently, the front end always loads responses via AJAX, even for this
-    # page; it would be a nice optimization to avoid that extra round trip to
-    # the comments service.
-    try:
-        group_id = get_group_id_for_comments_service(request, course_key, discussion_id)
-    except ValueError:
-        raise Http404
+    is_moderator = cached_has_permission(request.user, "see_all_cohorts", course_key)
 
     try:
-        if group_id is not None:
-            thread = cc.Thread.find(thread_id).retrieve(
-                recursive=request.is_ajax(),
-                user_id=request.user.id,
-                response_skip=request.GET.get("resp_skip"),
-                response_limit=request.GET.get("resp_limit"),
-                group_id=group_id
-            )
-        else:
-            thread = cc.Thread.find(thread_id).retrieve(
-                recursive=request.is_ajax(),
-                user_id=request.user.id,
-                response_skip=request.GET.get("resp_skip"),
-                response_limit=request.GET.get("resp_limit")
-            )
+        thread = cc.Thread.find(thread_id).retrieve(
+            recursive=request.is_ajax(),
+            user_id=request.user.id,
+            response_skip=request.GET.get("resp_skip"),
+            response_limit=request.GET.get("resp_limit")
+        )
     except cc.utils.CommentClientRequestError as e:
         if e.status_code == 404:
             raise Http404
         raise
 
+    # verify that the thread belongs to the requesting student's cohort
+    if is_commentable_cohorted(course_key, discussion_id) and not is_moderator:
+        try:
+            student_group_id = int(request.GET.get("group_id"))
+        except ValueError:
+            raise Http404
+        if student_group_id != thread.group_id:
+            raise Http404
+
+    # Currently, the front end always loads responses via AJAX, even for this
+    # page; it would be a nice optimization to avoid that extra round trip to
+    # the comments service.
     is_staff = cached_has_permission(request.user, 'openclose_thread', course.id)
     if request.is_ajax():
         with newrelic.agent.FunctionTrace(nr_transaction, "get_annotated_content_infos"):
@@ -316,7 +312,7 @@ def single_thread(request, course_id, discussion_id, thread_id):
             'thread_id': thread_id,
             'threads': _attr_safe_json(threads),
             'roles': _attr_safe_json(utils.get_role_ids(course_key)),
-            'is_moderator': cached_has_permission(request.user, "see_all_cohorts", course_key),
+            'is_moderator': is_moderator,
             'thread_pages': query_params['num_pages'],
             'is_course_cohorted': is_course_cohorted(course_key),
             'flag_moderator': cached_has_permission(request.user, 'openclose_thread', course.id) or has_access(request.user, 'staff', course),

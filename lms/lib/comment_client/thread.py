@@ -119,7 +119,6 @@ class Thread(models.Model):
             'mark_as_read': kwargs.get('mark_as_read', True),
             'resp_skip': kwargs.get('response_skip'),
             'resp_limit': kwargs.get('response_limit'),
-            'group_id': kwargs.get('group_id')
         }
         request_params = strip_none(request_params)
 

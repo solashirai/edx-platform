@@ -1,18 +1,28 @@
-class GroupIdDiscussionTestMixin(object):
+class GroupIdAssertionMixin(object):
+    def _data_or_params_cs_request(self, mock_request):
+        """
+        Returns the data or params dict that `mock_request` was called with.
+        """
+        call = [call for call in mock_request.call_args_list if call[0][1].endswith(self.cs_endpoint)][0]
+        if call[0][0] == "get":
+            return call[1]["params"]
+        elif call[0][0] == "post":
+            return call[1]["data"]
+
+    def _assert_comments_service_called_with_group_id(self, mock_request, group_id):
+        self.assertTrue(mock_request.called)
+        self.assertEqual(self._data_or_params_cs_request(mock_request)["group_id"], group_id)
+
+    def _assert_comments_service_called_without_group_id(self, mock_request):
+        self.assertTrue(mock_request.called)
+        self.assertNotIn("group_id", self._data_or_params_cs_request(mock_request))
+
+
+class GroupIdDiscussionTestMixin(GroupIdAssertionMixin):
     """
     Provides test cases to verify that views pass the correct `group_id` to
     the comments service when querying discussion topics.
     """
-    cs_call_num = -1  # by default, inspect the last call to the comments service
-
-    def _assert_comments_service_called_with_group_id(self, mock_request, group_id):
-        self.assertTrue(mock_request.called)
-        self.assertEqual(_data_or_params_cs_request(mock_request, self.cs_call_num)["group_id"], group_id)
-
-    def _assert_comments_service_called_without_group_id(self, mock_request):
-        self.assertTrue(mock_request.called)
-        self.assertNotIn("group_id", _data_or_params_cs_request(mock_request, self.cs_call_num))
-
     def test_cohorted_topic_student_without_group_id(self, mock_request):
         self.call_view_with_group_id(self.student, "cohorted_topic", None, mock_request, pass_group_id=False)
         self._assert_comments_service_called_with_group_id(mock_request, self.student_cohort.id)
@@ -94,21 +104,11 @@ class GroupIdDiscussionTestMixin(object):
         self._assert_comments_service_called_without_group_id(mock_request)
 
 
-class GroupIdThreadsTestMixin(object):
+class GroupIdThreadsTestMixin(GroupIdAssertionMixin):
     """
     Provides test cases to verify that views pass the correct `group_id` to
     the comments service.
     """
-    cs_call_num = -1
-
-    def _assert_comments_service_called_with_group_id(self, mock_request, group_id):
-        self.assertTrue(mock_request.called)
-        self.assertEqual(_data_or_params_cs_request(mock_request, self.cs_call_num)["group_id"], group_id)
-
-    def _assert_comments_service_called_without_group_id(self, mock_request):
-        self.assertTrue(mock_request.called)
-        self.assertNotIn("group_id", _data_or_params_cs_request(mock_request, self.cs_call_num))
-
     def test_student_without_group_id(self, mock_request):
         self.call_view_with_group_id(self.student, None, mock_request, pass_group_id=False)
         self._assert_comments_service_called_with_group_id(mock_request, self.student_cohort.id)
@@ -150,14 +150,3 @@ class GroupIdThreadsTestMixin(object):
                 mock_request
             )
         )
-
-
-def _data_or_params_cs_request(mock_request, call_num):
-    """
-    Returns the data or params dict that `mock_request` was called with the
-    `call_num` time that it was called.
-    """
-    if mock_request.call_args_list[call_num][0][0] == "get":
-        return mock_request.call_args_list[call_num][1]["params"]
-    elif mock_request.call_args_list[call_num][0][0] == "post":
-        return mock_request.call_args_list[call_num][1]["data"]

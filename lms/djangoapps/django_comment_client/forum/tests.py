@@ -10,7 +10,11 @@ from edxmako.tests import mako_middleware_process_request
 from xmodule.modulestore.tests.django_utils import ModuleStoreTestCase
 from django.core.urlresolvers import reverse
 from util.testing import UrlResetMixin
-from django_comment_client.tests.group_id import GroupIdDiscussionTestMixin, GroupIdThreadsTestMixin
+from django_comment_client.tests.group_id import (
+    GroupIdAssertionMixin,
+    GroupIdDiscussionTestMixin,
+    GroupIdThreadsTestMixin
+)
 from django_comment_client.tests.unicode import UnicodeTestMixin
 from django_comment_client.tests.utils import CohortedContentTestCase
 from django_comment_client.forum import views
@@ -336,21 +340,22 @@ class SingleCohortedThreadTestCase(ModuleStoreTestCase):
 
 
 @patch('lms.lib.comment_client.utils.requests.request')
-class SingleThreadGroupIdTestCase(CohortedContentTestCase, GroupIdDiscussionTestMixin):
+class SingleThreadGroupIdTestCase(CohortedContentTestCase, GroupIdAssertionMixin):
     def call_view_with_group_id(
             self,
             user,
             commentable_id,
-            group_id,
+            request_group_id,
             mock_request,
+            thread_group_id=None,
             pass_group_id=True
     ):
         thread_id = "test_thread_id"
-        mock_request.side_effect = make_mock_request_impl("dummy context", thread_id)
+        mock_request.side_effect = make_mock_request_impl("dummy context", thread_id, group_id=thread_group_id)
 
         request_data = {}
         if pass_group_id:
-            request_data["group_id"] = group_id
+            request_data["group_id"] = request_group_id
         request = RequestFactory().get(
             "dummy_url",
             data=request_data,
@@ -364,12 +369,61 @@ class SingleThreadGroupIdTestCase(CohortedContentTestCase, GroupIdDiscussionTest
             thread_id
         )
 
-    def _assert_view_returns_error(self, view_closure):
-        self.assertRaises(Http404, view_closure)
+    def test_student_non_cohorted(self, mock_request):
+        resp = self.call_view_with_group_id(self.student, "non_cohorted_topic", self.student_cohort.id, mock_request)
+        self.assertEqual(resp.status_code, 200)
+
+    def test_student_same_cohort(self, mock_request):
+        resp = self.call_view_with_group_id(
+            self.student,
+            "cohorted_topic",
+            self.student_cohort.id,
+            mock_request,
+            thread_group_id=self.student_cohort.id
+        )
+        self.assertEqual(resp.status_code, 200)
+
+    def test_student_different_cohort(self, mock_request):
+        self.assertRaises(
+            Http404,
+            lambda: self.call_view_with_group_id(
+                self.student,
+                "cohorted_topic",
+                self.student_cohort.id,
+                mock_request,
+                thread_group_id=self.moderator_cohort.id
+            )
+        )
+
+    def test_moderator_non_cohorted(self, mock_request):
+        resp = self.call_view_with_group_id(self.moderator, "non_cohorted_topic", self.moderator_cohort.id, mock_request)
+        self.assertEqual(resp.status_code, 200)
+
+    def test_moderator_same_cohort(self, mock_request):
+        resp = self.call_view_with_group_id(
+            self.moderator,
+            "cohorted_topic",
+            self.moderator_cohort.id,
+            mock_request,
+            thread_group_id=self.moderator_cohort.id
+        )
+        self.assertEqual(resp.status_code, 200)
+
+    def test_moderator_different_cohort(self, mock_request):
+        resp = self.call_view_with_group_id(
+            self.moderator,
+            "cohorted_topic",
+            self.moderator_cohort.id,
+            mock_request,
+            thread_group_id=self.student_cohort.id
+        )
+        self.assertEqual(resp.status_code, 200)
 
 
 @patch('lms.lib.comment_client.utils.requests.request')
 class GetThreadsGroupIdTestCase(CohortedContentTestCase, GroupIdDiscussionTestMixin):
+    cs_endpoint = "/threads"
+
     def call_view_with_group_id(
         self,
         user,
@@ -391,6 +445,8 @@ class GetThreadsGroupIdTestCase(CohortedContentTestCase, GroupIdDiscussionTestMi
 
 @patch('lms.lib.comment_client.utils.requests.request')
 class InlineDiscussionGroupIdTestCase(CohortedContentTestCase, GroupIdDiscussionTestMixin):
+    cs_endpoint = "/threads"
+
     def call_view_with_group_id(
             self,
             user,
@@ -421,6 +477,8 @@ class InlineDiscussionGroupIdTestCase(CohortedContentTestCase, GroupIdDiscussion
 
 @patch('lms.lib.comment_client.utils.requests.request')
 class ForumFormDiscussionGroupIdTestCase(CohortedContentTestCase, GroupIdThreadsTestMixin):
+    cs_endpoint = "/threads"
+
     def call_view_with_group_id(
             self,
             user,
@@ -450,7 +508,7 @@ class ForumFormDiscussionGroupIdTestCase(CohortedContentTestCase, GroupIdThreads
 
 @patch('lms.lib.comment_client.utils.requests.request')
 class UserProfileDiscussionGroupIdTestCase(CohortedContentTestCase, GroupIdThreadsTestMixin):
-    cs_call_num = 0  # The first call to the comments service is the one we care about
+    cs_endpoint = "/active_threads"
 
     def call_view_with_group_id(
             self,
@@ -482,7 +540,7 @@ class UserProfileDiscussionGroupIdTestCase(CohortedContentTestCase, GroupIdThrea
 
 @patch('lms.lib.comment_client.utils.requests.request')
 class FollowedThreadsDiscussionGroupIdTestCase(CohortedContentTestCase, GroupIdThreadsTestMixin):
-    cs_call_num = 0
+    cs_endpoint = "/subscribed_threads"
 
     def call_view_with_group_id(
             self,
