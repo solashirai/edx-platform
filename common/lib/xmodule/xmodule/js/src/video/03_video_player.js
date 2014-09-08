@@ -384,9 +384,8 @@ function (HTML5Video, Resizer) {
             // is in a PAUSED state.
             //
             // Why? This is how the YouTube API is implemented.
-            // If time is equal to undefined then Sjson script stopped
-            // responding.
-            if (time != undefined) {
+            // sjson.search() only works if time is defined.
+            if (!_.isUndefined(time)) {
                 this.videoPlayer.updatePlayTime(time);
             }
             if (time > 0 && this.isFlashMode()) {
