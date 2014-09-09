@@ -255,12 +255,8 @@ def single_thread(request, course_id, discussion_id, thread_id):
 
     # verify that the thread belongs to the requesting student's cohort
     if is_commentable_cohorted(course_key, discussion_id) and not is_moderator:
-        try:
-            group_id = get_cohort_id(request.user, course_key)
-        except ValueError:
-            # course_key does not exist
-            raise Http404
-        if group_id != thread.group_id:
+        user_group_id = get_cohort_id(request.user, course_key)
+        if hasattr(thread, "group_id") and user_group_id != thread.group_id:
             raise Http404
 
     is_staff = cached_has_permission(request.user, 'openclose_thread', course.id)
@@ -277,7 +273,10 @@ def single_thread(request, course_id, discussion_id, thread_id):
         })
 
     else:
-        threads, query_params = get_threads(request, course_key)
+        try:
+            threads, query_params = get_threads(request, course_key)
+        except ValueError:
+            return HttpResponseBadRequest("Invalid group_id")
         threads.append(thread.to_dict())
 
         with newrelic.agent.FunctionTrace(nr_transaction, "add_courseware_context"):
