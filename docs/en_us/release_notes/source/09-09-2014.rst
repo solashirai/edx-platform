@@ -31,6 +31,17 @@ edX Learning Management System
 * When a user flagged a post in a closed discussion thread, an error message
   was displayed. This problem is now fixed. (TNL-151)
 
+* When submitting a numerical answer in Internet Explorer 9, students received
+  a warning message that MathJax could not be read. This problem is now fixed.
+  (BLD-1199)
+
+*******************************
+edX Studio
+*******************************
+
+* When you import a course, a progress bar now shows the import progress.
+  (STUD-2017)
+
 **************************
 Coming Soon
 **************************
