@@ -16,7 +16,6 @@ import pystache_custom as pystache
 
 from course_groups.cohorts import get_cohort_by_id, get_cohort_id, is_commentable_cohorted
 from course_groups.models import CourseUserGroup
-import lms.lib.comment_client as cc
 from xmodule.modulestore.django import modulestore
 from django.utils.timezone import UTC
 from opaque_keys.edx.locations import i4xEncoder
