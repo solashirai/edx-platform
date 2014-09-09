@@ -4,6 +4,7 @@ Helper methods for testing cohorts.
 from xmodule.modulestore.django import modulestore
 from xmodule.modulestore import ModuleStoreEnum
 
+
 def topic_name_to_id(course, name):
     """
     Given a discussion topic name, return an id for that name (includes

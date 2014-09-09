@@ -50,7 +50,7 @@ def list_cohorts(request, course_key_string):
 
     cohorts.create_auto_cohorts(course)
 
-    all_cohorts = [{'name': c.name, 'id': c.id}
+    all_cohorts = [{'name': c.name, 'id': c.id, 'user_count': c.users.count()}
                    for c in cohorts.get_course_cohorts(course_key)]
 
     return json_http_response({'success': True,

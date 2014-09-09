@@ -8,7 +8,7 @@ from django.test.utils import override_settings
 from student.models import CourseEnrollment
 from course_groups.models import CourseUserGroup
 from course_groups import cohorts
-from helpers import topic_name_to_id, config_course_cohorts
+from course_groups.tests.helpers import topic_name_to_id, config_course_cohorts
 
 from xmodule.modulestore.django import modulestore, clear_existing_modulestores
 from opaque_keys.edx.locations import SlashSeparatedCourseKey
