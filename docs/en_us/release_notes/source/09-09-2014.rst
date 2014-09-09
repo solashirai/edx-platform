@@ -17,6 +17,17 @@ You can also sign up for the `edX Release Announcements mailing list`_ to get
 an email message when we update the edX Course Staff Release Notes.
 
 
+***************************************
+edX Website
+***************************************
+
+* To make the process of registering faster and easier, students can now
+  both register and log in to the edX.org and edX Edge web sites with
+  their existing Google or Facebook accounts.
+
+  .. image:: images/login-auth.png
+   :alt: The login screen, with Google and Facebook login buttons
+
 *******************************
 edX Learning Management System
 *******************************
