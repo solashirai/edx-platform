@@ -756,7 +756,11 @@ function (VideoPlayer, VideoStorage, i18n) {
         try {
             return this.metadata[this.youtubeId()].duration;
         } catch (err) {
-            return this.metadata[this.youtubeId('1.0')].duration;
+            if (!_.isUndefined(this.metadata[this.youtubeId('1.0')])) {
+                return this.metadata[this.youtubeId('1.0')].duration;
+            } else {
+                return 0;
+            }
         }
     }
 
