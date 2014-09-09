@@ -21,9 +21,9 @@ an email message when we update the edX Course Staff Release Notes.
 edX Website
 ***************************************
 
-* To make the process of registering faster and easier, students can now
-  both register and log in to the edX.org and edX Edge web sites with
-  their existing Google or Facebook accounts.
+* To make accessing edX courses faster and easier, students can now both
+  register and log in to edX.org and edX Edge with their existing Google or
+  Facebook accounts.
 
   .. image:: images/login-auth.png
    :alt: The login screen, with Google and Facebook login buttons
@@ -57,8 +57,7 @@ edX Studio
 Coming Soon
 **************************
 
-We're pleased to announce the following change, which will be released in the next few
-weeks:
+We're pleased to announce the following upcoming change:
 
 * Course teams will soon be able to access data about their courses on a
   dedicated dashboard for course-specific data. By providing insights into who
