@@ -104,48 +104,7 @@ class TextInputHintsTest(ResponseTest):
     """
     This class consists of a suite of test cases to be run on the text input problem represented by the XML below.
     """
-    xml = """
-        <problem  schema="edXML/1.0">
-            <p>In which country would you find the city of Paris?</p>
-
-            <stringresponse answer="France" type="ci" >
-                <textline label="In which country would you find the city of Paris?" size="20"/>
-                <correcthint>
-                    Viva la France!
-                </correcthint>
-
-                <additional_answer answer="USA" type="ci" >
-                     Less well known, but yes, there is a Paris, Texas.
-                </additional_answer>
-
-                <stringequalhint answer="Germany">                       
-                    I do not think so.
-                </stringequalhint>
-
-                <regexphint answer=".*land">
-                     The country name does not end in LAND
-                </regexphint>
-            </stringresponse>
-
-            <p>What color is the sky?</p>
-            <stringresponse answer="Blue">
-                <correcthint >The red light is scattered by water molecules leaving only blue light.
-                </correcthint>
-                <textline label="What color is the sky?" size="20"/>
-            </stringresponse>
-
-            <p>(This question will cause an illegal regular expression exception)</p>
-            <stringresponse answer="Bonk">
-                <correcthint >This hint should never appear.
-                </correcthint>
-                <textline label="Why not?" size="20"/>
-                <regexphint answer="[">
-                     This hint should never appear either because the regex is illegal.
-                </regexphint>
-            </stringresponse>
-
-        </problem>
-        """
+    xml = load_fixture('extended_hints_text_input.xml')
     problem = new_loncapa_problem(xml)          # this problem is properly constructed
 
     def test_text_input_hints_stringint(self):
@@ -242,46 +201,11 @@ class TextInputHintsTest(ResponseTest):
         )
 
 
-
-
-
-
 class NumericInputHintsTest(ResponseTest):
     """
     This class consists of a suite of test cases to be run on the numeric input problem represented by the XML below.
     """
-    xml = """
-            <problem schema="edXML/1.0">
-                <numericalresponse answer="1.141">
-                    <responseparam default=".01" type="tolerance"/>
-                    <formulaequationinput label="What value when squared is approximately equal to 2 (give your answer to 2 decimal places)?"/>
-
-                    <correcthint label="Nice">
-                        The square root of two turns up in the strangest places.
-                    </correcthint>
-
-                    <numerichint answer="-1.141" tolerance="0.01">
-                        Yes, squaring a negative number yields a positive
-                    </numerichint>
-
-                    <numerichint answer="7">
-                        7 x 7 = 49 which is much too high.
-                    </numerichint>
-
-                    <lehint answer="1">
-                        Much too low. You may be rounding down.
-                    </lehint>
-                </numericalresponse>
-
-                <numericalresponse answer="4">
-                    <responseparam default=".01" type="tolerance"/>
-                    <formulaequationinput label="What is 2 + 2?"/>
-                    <correcthint >
-                        Pretty easy, uh?.
-                    </correcthint>
-                </numericalresponse>
-            </problem>
-    """
+    xml = load_fixture('extended_hints_text_input.xml')
     problem = new_loncapa_problem(xml)          # this problem is properly constructed
 
     def test_numeric_input_hints_correct_answer(self):
@@ -301,85 +225,11 @@ class NumericInputHintsTest(ResponseTest):
         )
 
 
-
-
-
-
-
-
-
-
-
 class CheckboxHintsTest(ResponseTest):
     """
     This class consists of a suite of test cases to be run on the checkbox problem represented by the XML below.
     """
-    xml = """
-        <problem schema="edXML/1.0">
-            <p>Select all the fruits from the list</p>
-            <choiceresponse>
-              <checkboxgroup label="Select all the fruits from the list" direction="vertical">
-                <choice correct="true">Apple
-                           <choicehint selected="true">You are right that apple is a fruit.
-                           </choicehint>
-                           <choicehint selected="false">Remember that apple is also a fruit.
-                           </choicehint>
-                </choice>
-                <choice correct="false">Mushroom
-                           <choicehint selected="true">Mushroom is a fungus, not a fruit.
-                           </choicehint>
-                           <choicehint selected="false">You are right that mushrooms are not fruit
-                           </choicehint>
-                </choice>
-                <choice correct="true">Grape
-                           <choicehint selected="true">You are right that grape is a fruit
-                           </choicehint>
-                           <choicehint selected="false">Remember that grape is also a fruit.
-                           </choicehint>
-                </choice>
-                <choice correct="false">Mustang</choice>
-                <choice correct="false">Camero
-                           <choicehint selected="true">I do not know what a Camero is but it is not a fruit.
-                           </choicehint>
-                           <choicehint selected="false">What is a camero anyway?
-                           </choicehint>
-                </choice>
-                <booleanhint value="A*B" label="Almost right"> You are right that apple is a fruit, but there is one you are missing. Also, mushroom is not a fruit.
-                </booleanhint>
-                <booleanhint value="B*C"> You are right that grape is a fruit, but there is one you are missing. Also, mushroom is not a fruit.
-                </booleanhint>
-              </checkboxgroup>
-            </choiceresponse>
-            <p>Select all the vegetables from the list</p>
-            <choiceresponse>
-              <checkboxgroup label="Select all the vegetables from the list" direction="vertical">
-                <choice correct="false">Banana
-                           <choicehint selected="true">No, sorry, a banana is a fruit.
-                           </choicehint>
-                           <choicehint selected="false">poor banana.
-                           </choicehint>
-                </choice>
-                <choice correct="false">Ice Cream</choice>
-                <choice correct="false">Mushroom
-                           <choicehint selected="true" label="SORRY:">Mushroom is a fungus, not a vegetable.
-                           </choicehint>
-                           <choicehint selected="false">You are right that mushrooms are not vegatbles
-                           </choicehint>
-                </choice>
-                <choice correct="true">Brussel Sprout
-                           <choicehint selected="true">Brussel sprouts are vegetables.
-                           </choicehint>
-                           <choicehint selected="false">Brussel sprout is the only vegetable in this list.
-                           </choicehint>
-                </choice>
-                <booleanhint value="A*B" label="Very funny"> Making a banana split?
-                </booleanhint>
-                <booleanhint value="B*D"> That will make a horrible dessert: a brussel sprout split?
-                </booleanhint>
-              </checkboxgroup>
-            </choiceresponse>
-        </problem>
-    """
+    xml = load_fixture('extended_hints_checkbox.xml')
     problem = new_loncapa_problem(xml)          # this problem is properly constructed
 
     def test_checkbox_simple_choice_hints_choice_apple(self):
@@ -522,42 +372,7 @@ class MultpleChoiceHintsTest(ResponseTest):
     """
     This class consists of a suite of test cases to be run on the multiple choice problem represented by the XML below.
     """
-    xml = """
-              <problem schema="edXML/1.0">
-                <p>(note the blank line before mushroom -- be sure to include this test case)</p>
-                <p>Select the fruit from the list</p>
-                <multiplechoiceresponse>
-                  <choicegroup label="Select the fruit from the list" type="MultipleChoice">
-                    <choice correct="false">Mushroom
-                        <choicehint>Mushroom is a fungus, not a fruit.
-                        </choicehint>
-                    </choice>
-                    <choice correct="false">Potato</choice>
-                    <choice correct="true">Apple
-                        <choicehint label="OUTSTANDING">Apple is indeed a fruit.
-                        </choicehint>
-                    </choice>
-                  </choicegroup>
-                </multiplechoiceresponse>
-                <p>Select the vegetables from the list</p>
-                <multiplechoiceresponse>
-                  <choicegroup label="Select the vegetables from the list" type="MultipleChoice">
-                    <choice correct="false">Mushroom
-                        <choicehint>Mushroom is a fungus, not a vegetable.
-                        </choicehint>
-                    </choice>
-                    <choice correct="true">Potato
-                        <choicehint>Potato is a root vegetable.
-                        </choicehint>
-                    </choice>
-                    <choice correct="false">Apple
-                        <choicehint label="OOPS">Apple is a fruit.
-                        </choicehint>
-                    </choice>
-                  </choicegroup>
-                </multiplechoiceresponse>
-              </problem>
-    """
+    xml = load_fixture('extended_hints_multiple_choice.xml')
     problem = new_loncapa_problem(xml)
 
     def test_multiple_choice_simple_choice_hints_choice_mushroom(self):
@@ -610,38 +425,7 @@ class DropdownHintsTest(ResponseTest):
     """
     This class consists of a suite of test cases to be run on the drop down problem represented by the XML below.
     """
-    xml = """
-            <problem schema="edXML/1.0">
-                <p>Translation between Dropdown and ________ is straightforward.</p>
-                <optionresponse>
-                    <optioninput correct="Multiple Choice" options="(Multiple Choice),Text Input,Numerical Input">
-                        <option correct="True">Multiple Choice
-                           <optionhint label="Good Job">Yes, multiple choice is the right answer.
-                           </optionhint> </option>
-                        <option correct="False">Text Input
-                           <optionhint>No, text input problems do not present options.
-                           </optionhint> </option>
-                        <option correct="False">Numerical Input
-                           <optionhint>No, numerical input problems do not present options.
-                           </optionhint> </option>
-                    </optioninput>
-                </optionresponse>
-                <p>Clowns have funny _________ to make people laugh.</p>
-                <optionresponse>
-                    <optioninput correct="FACES" options="dogs,(FACES),money,donkeys,-no hint-">
-                        <option correct="False">dogs
-                           <optionhint label="NOPE">Not dogs, not cats, not toads
-                           </optionhint> </option>
-                        <option correct="True">FACES
-                           <optionhint>With lots of makeup, doncha know?
-                           </optionhint> </option>
-                        <option correct="False">money
-                           <optionhint>Clowns do not have any money, of course
-                           </optionhint> </option>
-                    </optioninput>
-                </optionresponse>
-            </problem>
-    """
+    xml = load_fixture('extended_hints_dropdown.xml')
     problem = new_loncapa_problem(xml)
 
     def test_dropdown_simple_choice_hints_choice_multiple_choice(self):
@@ -695,21 +479,7 @@ class ErrorConditionsTest(ResponseTest):
     """
 
     def test_error_conditions_illegal_element(self):
-        xml_with_errors = """
-            <problem schema="edXML/1.0">
-                <choiceresponse>
-                  <checkboxgroup label="Select all the vegetables from the list" direction="vertical">
-                    <choice correct="false">Banana
-                               <choicehint selected="true">No, sorry, a banana is a fruit.
-                               </choicehint>
-                               <choicehint selected="false">poor banana.
-                               </choicehint>
-                    </choice>
-                    <badElement>  this element is not a legal sibling of 'choice' and 'booleanhint' </badElement>
-                  </checkboxgroup>
-                </choiceresponse>
-            </problem>
-        """
+        xml_with_errors = load_fixture('extended_hints_with_errors.xml')
         with self.assertRaises(Exception):
             new_loncapa_problem(xml_with_errors)    # this problem is improperly constructed
 
