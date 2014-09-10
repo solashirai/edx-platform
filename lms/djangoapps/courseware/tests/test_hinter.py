@@ -3,8 +3,6 @@ This test file will run through some XBlock test scenarios regarding the
 recommender system
 """
 
-print('THIS IS A TEST MESSAGE TO ATTEMPT TO SEE WHERE THIS IS HAPPENING')
-
 import json
 import itertools
 import StringIO
@@ -65,40 +63,6 @@ class TestHinter(ModuleStoreTestCase, LoginEnrollmentTestCase):
                 'section': 'Welcome',
             }
         )
-        
-        self.test_recommendations = [
-            {
-                "title": "Covalent bonding and periodic trends",
-                "url": (
-                    "https://courses.edx.org/courses/MITx/3.091X/"
-                    "2013_Fall/courseware/SP13_Week_4/"
-                    "SP13_Periodic_Trends_and_Bonding/"
-                ),
-                "description": (
-                    "http://people.csail.mit.edu/swli/edx/"
-                    "recommendation/img/videopage1.png"
-                ),
-                "descriptionText": (
-                    "short description for Covalent bonding "
-                    "and periodic trends"
-                )
-            },
-            {
-                "title": "Polar covalent bonds and electronegativity",
-                "url": (
-                    "https://courses.edx.org/courses/MITx/3.091X/"
-                    "2013_Fall/courseware/SP13_Week_4/SP13_Covalent_Bonding/"
-                ),
-                "description": (
-                    "http://people.csail.mit.edu/swli/edx/"
-                    "recommendation/img/videopage2.png"
-                ),
-                "descriptionText": (
-                    "short description for Polar covalent "
-                    "bonds and electronegativity"
-                )
-            }
-        ]
 
         # Create student accounts and activate them.
         for i, (email, password) in enumerate(self.STUDENT_INFO):
@@ -143,66 +107,15 @@ class TestHinter(ModuleStoreTestCase, LoginEnrollmentTestCase):
         resp = self.client.post(url, json.dumps(event_data), '')
         return json.loads(resp.content)
 
-class TestPracticeTest(TestHinter):
-    def test_practice_two(self):
-        """
-        This is a practice test case.
-        """
-        self.assertEqual(1, 1)
-#       self.assertEqual(2, 1)
-
-    def test_rate_hint(self):
-        """
-        Tests student hint rating in the hinter. 
-        Checks: upvote works, upvoting twice doesn't work, other students
-        can see the change in rating, flagging works
-
-        The hint that is tested on already exists in the hinter: this probably should
-        be changed when I figure out a better way to add/manipulate variables through tests.
-        """
-        self.enroll_student(self.STUDENT_INFO[0][0], self.STUDENT_INFO[0][1])
-        resp = self.call_event(
-            'rate_hint', {
-                'student_rating': 1,
-                'value': 'hint',
-                'answer': 'answer'
-            }
-        )
-        resp2 = self.call_event(
-            'rate_hint', {
-                'student_rating': 1,
-                'value': 'hint',
-                'answer': 'answer'
-            }
-        )
-        self.logout()
-        self.enroll_student(self.STUDENT_INFO[1][0], self.STUDENT_INFO[1][1])
-        resp3 = self.call_event(
-            'rate_hint', {
-                'student_rating': 1,
-                'value': 'hint',
-                'answer': 'answer'
-            }
-        )
-        self.logout()
-        self.enroll_student(self.STUDENT_INFO[2][0], self.STUDENT_INFO[2][1])
-        resp4 = self.call_event(
-            'rate_hint', {
-                'student_rating': 0,
-                'value': 'hint',
-                'answer': 'answer'
-            }
-        )
-        self.assertEqual(resp3['rating'], '7')
-        self.assertEqual(resp['origdata'], 'answer')
-        self.assertEqual(resp['rating'], '6')
-        self.assertEqual(resp2['rating'], 'You have already voted on this hint!')
-        self.assertEqual(resp4['rating'], 'thiswasflagged')
+class Test_Hinter_Functions(TestHinter):
 
     def test_get_hint(self):
         '''
         This tests the hinter's "get_hint" function. the hint "hint" is already in the hinter for
         testing purposes, and the answer "answer" is used to test the hint.
+
+        This test should be updated once I figure out how to directly add hints/answers to hint_database
+        TODO once updated: ensure that student isn't shown flagged hints
         '''
         self.logout()
         self.enroll_student(self.STUDENT_INFO[0][0], self.STUDENT_INFO[0][1])
@@ -220,11 +133,22 @@ class TestPracticeTest(TestHinter):
         self.assertEqual(resp['HintsToUse'], 'hint')
         self.assertNotEqual(resp2['HintsToUse'], 'hint')
 
-    def test_student_hint_submission(self):
+    def test_feedback(self):
+        '''
+        This tests the feedback stage of the hinter. 
+        Once I figure out how to add hints/answers directly:
+            set up multiple hints/answers, set up Used
+            check that each answer returns multiple hints
+        '''
+        self.assertEqual(1,1)
+
+    def test_hint_submission(self):
         '''
         This tests the hinter's functions that store student-submitted hints, as well as
         check that students are provided the newly added hints.
-        This test currently runs on the assumption that test_get_hint runs without error
+
+        This test currently runs on the assumption that test_get_hint runs without error.
+        This test should be updated to directly check the hint_database.
         '''
         self.logout()
         self.enroll_student(self.STUDENT_INFO[0][0], self.STUDENT_INFO[0][1])
@@ -268,4 +192,50 @@ class TestPracticeTest(TestHinter):
         self.assertEqual(resp5['HintsToUse'], 'new_hint')
         self.assertEqual(resp6['HintsToUse'], 'hint_for_new_answer')
 
-    def 
+    def test_rate_hint(self):
+        """
+        Tests student hint rating in the hinter. 
+        Checks: upvote works, upvoting twice doesn't work, other students
+        can see the change in rating, flagging works
+
+        This test should be updated after learning how to properly set variables (such
+        as hint_database's hints) to the hinter via this test
+        """
+        self.enroll_student(self.STUDENT_INFO[0][0], self.STUDENT_INFO[0][1])
+        resp = self.call_event(
+            'rate_hint', {
+                'student_rating': 1,
+                'value': 'hint',
+                'answer': 'answer'
+            }
+        )
+        resp2 = self.call_event(
+            'rate_hint', {
+                'student_rating': 1,
+                'value': 'hint',
+                'answer': 'answer'
+            }
+        )
+        self.logout()
+        self.enroll_student(self.STUDENT_INFO[1][0], self.STUDENT_INFO[1][1])
+        resp3 = self.call_event(
+            'rate_hint', {
+                'student_rating': 1,
+                'value': 'hint',
+                'answer': 'answer'
+            }
+        )
+        self.logout()
+        self.enroll_student(self.STUDENT_INFO[2][0], self.STUDENT_INFO[2][1])
+        resp4 = self.call_event(
+            'rate_hint', {
+                'student_rating': 0,
+                'value': 'hint',
+                'answer': 'answer'
+            }
+        )
+        self.assertEqual(resp3['rating'], '7')
+        self.assertEqual(resp['origdata'], 'answer')
+        self.assertEqual(resp['rating'], '6')
+        self.assertEqual(resp2['rating'], 'You have already voted on this hint!')
+        self.assertEqual(resp4['rating'], 'thiswasflagged')
