@@ -1,7 +1,21 @@
 """
 This test file will run through some XBlock test scenarios regarding the
-crowd sourced hinter system
+recommender system
 
+
+remove print
+In generally, Python has logging+warning frameworks which do well here (https://docs.python.org/2/library/logging.html)
+change testhinter to test crowdhinter
+* Strip out dead code (sample recommendations)
+* Fix comments (hinter, not recommender)
+* Be more specific (crowdhinter)
+Why inheritence? Two test classes and not one?
+
+* Things not done should have TODO comments.
+In general, most would not go into a platform PR
+* Rename call_event to invoke_ajax_handler, perhaps? (in recommender script too)
+* 'hint' and 'submittedanswer' are nice in that they describe what they do. They're not nice in that they're not unique. I would propose something like "Existing Hint" and "Student Answer Submission". Why? So you can search for them.
+I'd consider STUDENT_INFO a bettr data structure, so you can do things like .email or ['email'] instead of [0] and [1]
 """
 
 import json
@@ -26,7 +40,7 @@ from lms.lib.xblock.runtime import quote_slashes
 @override_settings(MODULESTORE=TEST_DATA_MIXED_MODULESTORE)
 class TestCrowdHinter(ModuleStoreTestCase, LoginEnrollmentTestCase):
     """
-    Check that Crowd Sourced Hinter state is saved properly.
+    Check that Recommender state is saved properly.
     """
     STUDENT_INFO = [('view@test.com', 'foo'), ('view2@test.com', 'foo'), ('view3@test.com', 'foo')]
 
@@ -73,6 +87,17 @@ class TestCrowdHinter(ModuleStoreTestCase, LoginEnrollmentTestCase):
 
         self.staff_user = GlobalStaffFactory()
 
+    def get_handler_url(self, handler, xblock_name='crowdxblock'):
+        """
+        Get url for the specified xblock handler
+        """
+        return reverse('xblock_handler', kwargs={
+            'course_id': self.course.id.to_deprecated_string(),
+            'usage_id': quote_slashes(self.course.id.make_usage_key('crowdxblock', xblock_name).to_deprecated_string()),
+            'handler': handler,
+            'suffix': ''
+        })
+
     def enroll_student(self, email, password):
         """
         Student login and enroll for the course
@@ -89,7 +114,7 @@ class TestCrowdHinter(ModuleStoreTestCase, LoginEnrollmentTestCase):
         self.login(email, password)
         self.enroll(self.course, verify=True)
 
-    def invoke_ajax_handler(self, handler, event_data, xblock_name='crowdxblock'):
+    def call_event(self, handler, event_data, xblock_name='crowdxblock'):
         """
         Call a ajax event (edit, flag) on a resource by providing data
         """
@@ -97,34 +122,25 @@ class TestCrowdHinter(ModuleStoreTestCase, LoginEnrollmentTestCase):
         resp = self.client.post(url, json.dumps(event_data), '')
         return json.loads(resp.content)
 
-    def get_handler_url(self, handler, xblock_name='crowdxblock'):
-        """
-        Get url for the specified xblock handler
-        """
-        return reverse('xblock_handler', kwargs={
-            'course_id': self.course.id.to_deprecated_string(),
-            'usage_id': quote_slashes(self.course.id.make_usage_key('crowdxblock', xblock_name).to_deprecated_string()),
-            'handler': handler,
-            'suffix': ''
-        })
+class Test_CrowdHinter_Functions(TestCrowdHinter):
 
     def test_get_hint(self):
         '''
-        This tests the crowd sourcedhinter's "get_hint" function. the hint "hint" is already in the
-        crowd sourced hinter for testing purposes, and the answer "answer" is used to test the hint.
+        This tests the crowdhinter's "get_hint" function. the hint "hint" is already in the crowdhinter for
+        testing purposes, and the answer "answer" is used to test the hint.
 
         This test should be updated once I figure out how to directly add hints/answers to hint_database
         TODO once updated: ensure that student isn't shown flagged hints
         '''
         self.logout()
         self.enroll_student(self.STUDENT_INFO[0][0], self.STUDENT_INFO[0][1])
-        resp = self.invoke_ajax_handler(
+        resp = self.call_event(
             'get_hint', {
                 'submittedanswer': 'answer'
             }
         )
         # call get_hint again to make sure the same hint isn't returned
-        resp2 = self.invoke_ajax_handler(
+        resp2 = self.call_event(
             'get_hint', {
                 'submittedanswer': 'answer'
             }
@@ -132,17 +148,18 @@ class TestCrowdHinter(ModuleStoreTestCase, LoginEnrollmentTestCase):
         self.assertEqual(resp['HintsToUse'], 'hint')
         self.assertNotEqual(resp2['HintsToUse'], 'hint')
 
-    #TODO: def test_feedback(self):
+    def test_feedback(self):
         '''
-        This tests the feedback stage of the crowd sourced hinter. 
+        This tests the feedback stage of the crowdhinter. 
         Once I figure out how to add hints/answers directly:
             set up multiple hints/answers, set up Used
             check that each answer returns multiple hints
         '''
+        self.assertEqual(1,1)
 
     def test_hint_submission(self):
         '''
-        This tests the crowd sourced hinter's functions that store student-submitted hints, as well as
+        This tests the crowdhinter's functions that store student-submitted hints, as well as
         check that students are provided the newly added hints.
 
         This test currently runs on the assumption that test_get_hint runs without error.
@@ -150,19 +167,19 @@ class TestCrowdHinter(ModuleStoreTestCase, LoginEnrollmentTestCase):
         '''
         self.logout()
         self.enroll_student(self.STUDENT_INFO[0][0], self.STUDENT_INFO[0][1])
-        resp = self.invoke_ajax_handler(
+        resp = self.call_event(
             'give_hint', {
                 'submission': 'new_hint',
                 'answer': 'answer'
             }
         )
         # get_hint for a new incorrect answer, to add into the hint_database
-        resp2 = self.invoke_ajax_handler(
+        resp2 = self.call_event(
             'get_hint', {
                 'submittedanswer': 'new_answer'
             }
         )
-        resp3 = self.invoke_ajax_handler(
+        resp3 = self.call_event(
             'give_hint', {
                 'submission': 'hint_for_new_answer',
                 'answer': 'new_answer'
@@ -171,17 +188,17 @@ class TestCrowdHinter(ModuleStoreTestCase, LoginEnrollmentTestCase):
         # check that other students recieve these hints
         self.logout()
         self.enroll_student(self.STUDENT_INFO[1][0], self.STUDENT_INFO[1][1])
-        resp4 = self.invoke_ajax_handler(
+        resp4 = self.call_event(
             'get_hint', {
                 'submittedanswer': 'answer'
             }
         )
-        resp5 = self.invoke_ajax_handler(
+        resp5 = self.call_event(
             'get_hint', {
                 'submittedanswer': 'answer'
             }
         )
-        resp6 = self.invoke_ajax_handler(
+        resp6 = self.call_event(
             'get_hint', {
                 'submittedanswer': 'new_answer'
             }
@@ -192,44 +209,44 @@ class TestCrowdHinter(ModuleStoreTestCase, LoginEnrollmentTestCase):
 
     def test_rate_hint(self):
         """
-        Tests student hint rating in the crowd sourced hinter. 
+        Tests student hint rating in the crowdhinter. 
         Checks: upvote works, upvoting twice doesn't work, other students
         can see the change in rating, flagging works
 
         This test should be updated after learning how to properly set variables (such
-        as hint_database's hints) to the crowd sourced hinter via this test
+        as hint_database's hints) to the crowdhinter via this test
         """
         self.enroll_student(self.STUDENT_INFO[0][0], self.STUDENT_INFO[0][1])
-        resp = self.invoke_ajax_handler(
+        resp = self.call_event(
             'rate_hint', {
                 'student_rating': 1,
-                'used_hint': 'hint',
-                'student_answer': 'answer'
+                'value': 'hint',
+                'answer': 'answer'
             }
         )
-        resp2 = self.invoke_ajax_handler(
+        resp2 = self.call_event(
             'rate_hint', {
                 'student_rating': 1,
-                'used_hint': 'hint',
-                'student_answer': 'answer'
+                'value': 'hint',
+                'answer': 'answer'
             }
         )
         self.logout()
         self.enroll_student(self.STUDENT_INFO[1][0], self.STUDENT_INFO[1][1])
-        resp3 = self.invoke_ajax_handler(
+        resp3 = self.call_event(
             'rate_hint', {
                 'student_rating': 1,
-                'used_hint': 'hint',
-                'student_answer': 'answer'
+                'value': 'hint',
+                'answer': 'answer'
             }
         )
         self.logout()
         self.enroll_student(self.STUDENT_INFO[2][0], self.STUDENT_INFO[2][1])
-        resp4 = self.invoke_ajax_handler(
+        resp4 = self.call_event(
             'rate_hint', {
                 'student_rating': 0,
-                'used_hint': 'hint',
-                'student_answer': 'answer'
+                'value': 'hint',
+                'answer': 'answer'
             }
         )
         self.assertEqual(resp3['rating'], '7')
