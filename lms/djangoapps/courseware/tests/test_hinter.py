@@ -233,7 +233,7 @@ class TestCrowdHinter(ModuleStoreTestCase, LoginEnrollmentTestCase):
             }
         )
         self.assertEqual(resp3['rating'], '7')
-        self.assertEqual(resp['origdata'], 'answer')
+        self.assertEqual(resp['used_hint'], 'hint')
         self.assertEqual(resp['rating'], '6')
         self.assertEqual(resp2['rating'], 'You have already voted on this hint!')
         self.assertEqual(resp4['rating'], 'thiswasflagged')
