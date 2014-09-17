@@ -18,4 +18,4 @@
 
 # This XBlock gives hints to students when they input incorrect answers.
 # It is still a prototype.
--e git+https://github.com/solashirai/crowdsourcehinter.git@1c0d105f05a38a26511584c8df24335a110e86d1#egg=crowdhinter-xblock
+-e git+https://github.com/solashirai/crowdsourcehinter.git@1c0d105f05a38a26511584c8df24335a110e86d1#egg=crowdxblock-xblock
