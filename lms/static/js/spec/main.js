@@ -561,7 +561,8 @@
         'lms/include/js/spec/edxnotes/plugins/events_spec.js',
         'lms/include/js/spec/edxnotes/plugins/scroller_spec.js',
         'lms/include/js/spec/edxnotes/collections/notes_spec.js',
-        'lms/include/js/spec/search/search_spec.js'
+        'lms/include/js/spec/search/search_spec.js',
+        'lms/include/js/spec/crowdsourcehinter_spec.js'
     ]);
 
 }).call(this, requirejs, define);
